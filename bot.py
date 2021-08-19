@@ -16,10 +16,6 @@ with open('config.json', 'r') as f:
 bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents)
 
 
-##### Commands #####
-
-
-
 ##### Admin commands #####
 
 def checkOwner(ctx):
@@ -27,19 +23,15 @@ def checkOwner(ctx):
 
 @bot.command()
 @commands.check(checkOwner)
-async def reloadCogs(ctx):
+async def reloadExtensions(ctx):
     try:
-        print()
-        # for folder in os.listdir("./games"):
-        #     for filename in os.listdir(f"./games/{folder}"):
-        #         if filename.endswith(".py"):
-        #             bot.unload_extension(f"games.{folder}.{filename[:-3]}")
-        #             bot.load_extension(f"games.{folder}.{filename[:-3]}")
+        bot.reload_extension("extensions.coop")
+        bot.reload_extension("extensions.utils")
     except Exception as inst:
         await ctx.send(f"Seems like I encountered an error (*3) :confounded:\n```{type(inst)}\n{inst}```")
         return
     else:
-        await ctx.send("All cogs have been reloaded :arrows_counterclockwise:")
+        await ctx.send("All extensions have been reloaded :arrows_counterclockwise:")
 
 @bot.command()
 @commands.check(checkOwner)
@@ -67,6 +59,7 @@ async def removeFromServer(ctx, id):
     else:
         await ctx.send(f"Left {guild.name} :wink:")
 
+
 ##### Events #####
 
 @bot.event
@@ -91,6 +84,7 @@ async def help(ctx):
     await ctx.send("Sending you help in your DMs :ambulance:")
 
     # TODO
+    await dmChannel.send("bilbius bad")
     # embed = discord.Embed(title="Ur Bot Help", color=discord.Color.red(),
     #                     description="&help                      > This command\n" +
     #                                 "&games                     > Returns the list of available games\n" +
@@ -106,14 +100,11 @@ async def on_ready():
 
 def initBot():
     """
-    Loads other python files (cogs) into the bot
+    Loads other python files (extensions) into the bot
     """
 
-    print("No cogs loaded...")
-    # for folder in os.listdir("./games"):
-    #     for filename in os.listdir(f"./games/{folder}"):
-    #         if filename.endswith(".py"):
-    #             bot.load_extension(f"games.{folder}.{filename[:-3]}")
+    bot.load_extension("extensions.coop")
+    bot.load_extension("extensions.utils")
 
 
 initBot()
