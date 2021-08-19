@@ -1,0 +1,59 @@
+running_coops.json:
+
+{
+	[contract-id] : {
+		"size" : [contract-size],
+		"date" : [date]
+		"isLeggacy" : True/False,
+		"coops" : [
+			{
+				"code" : [coop-code],
+				"creator" : [discord-id],
+				"members" : [
+					[discord-id],
+					...
+					# Alt accounts are alt+discord-id
+				]
+			},
+			...
+		],
+		"remaining" : [
+			[discord-id],
+			...
+		]
+	}
+	
+}
+
+participation_archive.json:
+
+{
+	[contract-id] : {
+		[date] : {
+			"isLeggacy" : False,
+			"participation" : {
+				[discord-id1] : "yes",
+				[discord-id2] : "no",
+				...
+			}
+		},
+		[date] : {
+			"isLeggacy" : True,
+			"participation" : {
+				[discord-id1] : "leggacy",
+				[discord-id2] : "yes",
+				[discord-id3] : "no",
+				...
+			}
+		}
+	}
+}
+
+name_index.json:
+Reference for people's Discord ID and their EggInc/Discord name
+
+{
+	[discord-id] : "[egginc-name] ([discord-name])",
+	...
+	# Alt accounts are alt+discord-id
+}
