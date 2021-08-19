@@ -2,5 +2,6 @@
 .vscode/
 
 # Files
+extensions/__pycache__
 config.json
 doc/Invite URL.txt

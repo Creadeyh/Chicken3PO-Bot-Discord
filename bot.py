@@ -16,7 +16,7 @@ with open('config.json', 'r') as f:
 bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents)
 
 
-##### Admin commands #####
+##### Owner commands #####
 
 def checkOwner(ctx):
     return ctx.author.id == 146263952085614592
@@ -28,7 +28,7 @@ async def reloadExtensions(ctx):
         bot.reload_extension("extensions.coop")
         bot.reload_extension("extensions.utils")
     except Exception as inst:
-        await ctx.send(f"Seems like I encountered an error (*3) :confounded:\n```{type(inst)}\n{inst}```")
+        await ctx.send(f"Administrative error (#1) :confounded:\n```{type(inst)}\n{inst}```")
         return
     else:
         await ctx.send("All extensions have been reloaded :arrows_counterclockwise:")
@@ -54,7 +54,7 @@ async def removeFromServer(ctx, id):
         guild = await bot.fetch_guild(id)
         await guild.leave()
     except Exception as inst:
-        await ctx.send(f"Administrative error (#1) :confounded:\n```{type(inst)}\n{inst}```")
+        await ctx.send(f"Administrative error (#2) :confounded:\n```{type(inst)}\n{inst}```")
         return
     else:
         await ctx.send(f"Left {guild.name} :wink:")
@@ -62,6 +62,7 @@ async def removeFromServer(ctx, id):
 
 ##### Events #####
 
+# TODO change ?
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
