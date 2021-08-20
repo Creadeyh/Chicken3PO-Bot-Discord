@@ -5,6 +5,9 @@ import os
 import asyncio
 import json
 
+
+##### Inits #####
+
 intents = discord.Intents.default()
 intents.members = True
 
@@ -12,17 +15,26 @@ with open('config.json', 'r') as f:
     config = json.load(f)
     TOKEN = config['TOKEN']
     COMMAND_PREFIX = config['COMMAND_PREFIX']
+    CHANNEL_ID = config["CHANNEL_ID"]
 
 bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents)
+
+bot.load_extension("extensions.coop")
+bot.load_extension("extensions.utils")
+coop = bot.get_cog("Coop")
+utils = bot.get_cog("Utils")
+
+@bot.event
+async def on_ready():
+    await bot.change_presence(activity=discord.Game('Egg Inc with Wall-Egg | &help'))
+    # await bot.change_presence(activity=discord.Game("DON'T USE I'M TESTING"))
+    print("Bot is ready")
 
 
 ##### Owner commands #####
 
-def checkOwner(ctx):
-    return ctx.author.id == 146263952085614592
-
 @bot.command()
-@commands.check(checkOwner)
+@commands.check(utils.checkOwner)
 async def reloadExtensions(ctx):
     try:
         bot.reload_extension("extensions.coop")
@@ -34,7 +46,7 @@ async def reloadExtensions(ctx):
         await ctx.send("All extensions have been reloaded :arrows_counterclockwise:")
 
 @bot.command()
-@commands.check(checkOwner)
+@commands.check(utils.checkOwner)
 async def getServerList(ctx):
 
         dmChannel = ctx.author.dm_channel
@@ -48,7 +60,7 @@ async def getServerList(ctx):
         await dmChannel.send(liste)
 
 @bot.command()
-@commands.check(checkOwner)
+@commands.check(utils.checkOwner)
 async def removeFromServer(ctx, id):
     try:
         guild = await bot.fetch_guild(id)
@@ -69,9 +81,18 @@ async def on_command_error(ctx, error):
         await ctx.send("Something is missing from this command :thinking:")
     else:
         print(error)
-        
 
-##### Inits #####
+
+##### Base Commands #####
+
+@bot.command()
+async def test(ctx):
+    print()
+
+@bot.command()
+async def startup(ctx):
+    # TODO
+    print()
 
 bot.remove_command('help')
 
@@ -93,20 +114,6 @@ async def help(ctx):
     #                                 "&play [game] [@someone]    > Starts a game with someone")
     # await dmChannel.send(embed=embed)
 
-@bot.event
-async def on_ready():
-    await bot.change_presence(activity=discord.Game('Egg Inc with Wall-Egg | &help'))
-    # await bot.change_presence(activity=discord.Game("DON'T USE I'M TESTING"))
-    print("Bot is ready")
-
-def initBot():
-    """
-    Loads other python files (extensions) into the bot
-    """
-
-    bot.load_extension("extensions.coop")
-    bot.load_extension("extensions.utils")
 
 
-initBot()
 bot.run(TOKEN)
