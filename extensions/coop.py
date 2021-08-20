@@ -6,6 +6,7 @@ class Coop(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.utils = self.bot.get_cog("Utils")
 
 
 def setup(bot):
