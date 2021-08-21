@@ -3,29 +3,27 @@ from discord.ext import commands
 
 import json
 
+JSON_PATH = "data/"
 
 class Utils(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
 
-    async def checkOwner(self, ctx):
-        return await self.bot.is_owner(ctx.author)
-
     @staticmethod
-    async def readJSON(name):
+    async def read_json(name):
         try:
-            with open(f"data/{name}.json", "r") as f:
+            with open(f"{JSON_PATH}{name}.json", "r") as f:
                 dic = json.load(f)
         except FileNotFoundError:
             dic = {}
-            with open(f"data/{name}.json", "w") as f:
+            with open(f"{JSON_PATH}{name}.json", "w") as f:
                 json.dump(dic, f, indent=4)
         return dic
 
     @staticmethod
-    async def saveJSON(name, dic):
-        with open(f"data/{name}.json", "w") as f:
+    async def save_json(name, dic):
+        with open(f"{JSON_PATH}{name}.json", "w") as f:
             json.dump(dic, f, indent=4)
 
 def setup(bot):

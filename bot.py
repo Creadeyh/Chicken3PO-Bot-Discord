@@ -33,9 +33,9 @@ async def on_ready():
 
 ##### Owner commands #####
 
-@bot.command()
-async def reloadExtensions(ctx):
+@bot.command(name="reloadext")
 @commands.is_owner()
+async def reload_extensions(ctx):
     try:
         bot.reload_extension("extensions.coop")
         bot.reload_extension("extensions.utils")
@@ -45,23 +45,23 @@ async def reloadExtensions(ctx):
     else:
         await ctx.send("All extensions have been reloaded :arrows_counterclockwise:")
 
-@bot.command()
-async def getServerList(ctx):
+@bot.command(name="serverlist")
 @commands.is_owner()
+async def get_server_list(ctx):
 
-        dmChannel = ctx.author.dm_channel
-        if dmChannel == None:
+        dm_channel = ctx.author.dm_channel
+        if dm_channel == None:
             await ctx.author.create_dm()
-            dmChannel = ctx.author.dm_channel
+            dm_channel = ctx.author.dm_channel
 
         liste = {}
         for guild in bot.guilds:
             liste[guild.name] = guild.id
-        await dmChannel.send(liste)
+        await dm_channel.send(liste)
 
-@bot.command()
-async def removeFromServer(ctx, id):
+@bot.command(name="removeserver")
 @commands.is_owner()
+async def remove_from_server(ctx, id):
     try:
         guild = await bot.fetch_guild(id)
         await guild.leave()
@@ -86,6 +86,7 @@ async def on_command_error(ctx, error):
 ##### Base Commands #####
 
 @bot.command()
+@commands.is_owner()
 async def test(ctx):
     print()
 
@@ -98,22 +99,15 @@ bot.remove_command('help')
 
 @bot.command()
 async def help(ctx):
-    dmChannel = ctx.author.dm_channel
-    if dmChannel == None:
+    dm_channel = ctx.author.dm_channel
+    if dm_channel == None:
         await ctx.author.create_dm()
-        dmChannel = ctx.author.dm_channel
+        dm_channel = ctx.author.dm_channel
 
     await ctx.send("Sending you help in your DMs :ambulance:")
 
     # TODO
-    await dmChannel.send("bilbius bad")
-    # embed = discord.Embed(title="Ur Bot Help", color=discord.Color.red(),
-    #                     description="&help                      > This command\n" +
-    #                                 "&games                     > Returns the list of available games\n" +
-    #                                 "&rules [game] [@someone]   > Sends the rules for a given game. Optional person to send to. If none, sends to request author\n" +
-    #                                 "&play [game] [@someone]    > Starts a game with someone")
-    # await dmChannel.send(embed=embed)
-
+    await dm_channel.send("bilbius bad")
 
 
 bot.run(TOKEN)
