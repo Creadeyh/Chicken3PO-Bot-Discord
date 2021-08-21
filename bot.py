@@ -34,8 +34,8 @@ async def on_ready():
 ##### Owner commands #####
 
 @bot.command()
-@commands.check(utils.checkOwner)
 async def reloadExtensions(ctx):
+@commands.is_owner()
     try:
         bot.reload_extension("extensions.coop")
         bot.reload_extension("extensions.utils")
@@ -46,8 +46,8 @@ async def reloadExtensions(ctx):
         await ctx.send("All extensions have been reloaded :arrows_counterclockwise:")
 
 @bot.command()
-@commands.check(utils.checkOwner)
 async def getServerList(ctx):
+@commands.is_owner()
 
         dmChannel = ctx.author.dm_channel
         if dmChannel == None:
@@ -60,8 +60,8 @@ async def getServerList(ctx):
         await dmChannel.send(liste)
 
 @bot.command()
-@commands.check(utils.checkOwner)
 async def removeFromServer(ctx, id):
+@commands.is_owner()
     try:
         guild = await bot.fetch_guild(id)
         await guild.leave()
