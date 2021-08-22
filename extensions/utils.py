@@ -11,7 +11,7 @@ class Utils(commands.Cog):
         self.bot = bot
 
     @staticmethod
-    async def read_json(name):
+    def read_json(name):
         try:
             with open(f"{JSON_PATH}{name}.json", "r") as f:
                 dic = json.load(f)
@@ -22,7 +22,7 @@ class Utils(commands.Cog):
         return dic
 
     @staticmethod
-    async def save_json(name, dic):
+    def save_json(name, dic):
         with open(f"{JSON_PATH}{name}.json", "w") as f:
             json.dump(dic, f, indent=4)
 
