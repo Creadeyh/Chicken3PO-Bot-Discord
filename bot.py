@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord_slash import SlashCommand
 
 import os
 import asyncio
@@ -18,6 +19,7 @@ with open('config.json', 'r') as f:
     CHANNEL_ID = config["CHANNEL_ID"]
 
 bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents)
+slash = SlashCommand(bot, sync_commands=True)
 
 bot.load_extension("extensions.coop")
 bot.load_extension("extensions.utils")
