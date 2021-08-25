@@ -117,7 +117,10 @@ async def on_command_error(ctx, error):
 @bot.event
 async def on_slash_command_error(ctx, error):
     if isinstance(error, CheckFailure):
-        await ctx.send("Unauthorized channel for this command :no_entry_sign:", hidden=True)
+        if any(substring in ctx.name for substring in ["Remove contract", "Coop completed", "Coop failed"]):
+            await ctx.send("Unauthorized target message :no_entry_sign:", hidden=True)
+        else:
+            await ctx.send("Unauthorized channel for this command :no_entry_sign:", hidden=True)
     elif isinstance(error, commands.CheckAnyFailure):
         await ctx.send("Unauthorized command :no_entry_sign:", hidden=True)
     else:

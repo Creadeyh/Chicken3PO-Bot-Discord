@@ -22,21 +22,40 @@ class Coop(commands.Cog):
         self.bot = bot
         self.utils = self.bot.get_cog("Utils")
 
+    #########################
+    ##### Check methods #####
+    #########################
+
     def is_bot_channel():
-        """
-        For slash commands' decorator
-        """
         def predicate(ctx):
             return ctx.channel.id == ctx.bot.get_cog("Utils").get_bot_channel_id(ctx.guild.id)
         return commands.check(predicate)
 
     def is_coop_creator():
-        """
-        For check_any decorator
-        """
         def predicate(ctx):
             # TODO ctx.bot
             return ctx.author.id == ""
+        return commands.check(predicate)
+    
+    def check_context_menu_target_contract():
+        def predicate(ctx):
+            utils = ctx.bot.get_cog("Utils")
+            running_coops = utils.read_json("running_coops")
+            for contract in running_coops:
+                if ctx.target_message.id == contract["message_id"]:
+                    return True
+            return False
+        return commands.check(predicate)
+
+    def check_context_menu_target_coop():
+        def predicate(ctx):
+            utils = ctx.bot.get_cog("Utils")
+            running_coops = utils.read_json("running_coops")
+            for contract in running_coops:
+                for coop in contract["coops"]:
+                    if ctx.target_message.id == coop["message_id"]:
+                        return True
+            return False
         return commands.check(predicate)
 
     ##########################
@@ -80,6 +99,7 @@ class Coop(commands.Cog):
     @cog_ext.cog_context_menu(name="Remove contract",
                             guild_ids=GUILD_IDS,
                             target=ContextMenuType.MESSAGE)
+    @check_context_menu_target_contract()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
     async def remove_contract(ctx: MenuContext):
         # TODO
@@ -88,6 +108,7 @@ class Coop(commands.Cog):
     @cog_ext.cog_context_menu(name="Coop completed",
                             guild_ids=GUILD_IDS,
                             target=ContextMenuType.MESSAGE)
+    @check_context_menu_target_coop()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator())
     async def coop_completed(ctx: MenuContext):
         # TODO
@@ -96,6 +117,7 @@ class Coop(commands.Cog):
     @cog_ext.cog_context_menu(name="Coop failed",
                             guild_ids=GUILD_IDS,
                             target=ContextMenuType.MESSAGE)
+    @check_context_menu_target_coop()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator())
     async def coop_failed(ctx: MenuContext):
         # TODO

@@ -4,11 +4,13 @@ data/running_coops.json:
 	[contract-id] : {
 		"size" : [contract-size],
 		"date" : [date]
-		"isLeggacy" : True/False,
+		"is_leggacy" : True/False,
+		"message_id": [message-id],
 		"coops" : [
 			{
 				"code" : [coop-code],
 				"creator" : [discord-id],
+				"message_id": [message-id],
 				"members" : [
 					[discord-id],
 					...
@@ -30,7 +32,7 @@ data/participation_archive.json:
 {
 	[contract-id] : {
 		[date] : {
-			"isLeggacy" : False,
+			"is_leggacy" : False,
 			"participation" : {
 				[discord-id1] : "yes",
 				[discord-id2] : "no",
@@ -38,7 +40,7 @@ data/participation_archive.json:
 			}
 		},
 		[date] : {
-			"isLeggacy" : True,
+			"is_leggacy" : True,
 			"participation" : {
 				[discord-id1] : "leggacy",
 				[discord-id2] : "yes",
