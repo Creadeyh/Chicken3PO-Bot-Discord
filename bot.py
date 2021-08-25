@@ -13,7 +13,6 @@ intents.members = True
 
 with open("config.json", "r") as f:
     config = json.load(f)
-    CHANNEL_ID = config["CHANNEL_ID"]
     TOKEN = config["TOKEN"]
     COMMAND_PREFIX = config["COMMAND_PREFIX"]
 
@@ -25,22 +24,50 @@ bot.load_extension("extensions.utils")
 coop = bot.get_cog("Coop")
 utils = bot.get_cog("Utils")
 
+
+#######################
+##### Main events #####
+#######################
+
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=discord.Game("Egg Inc with Wall-Egg | &help"))
     # await bot.change_presence(activity=discord.Game("DON'T USE I'M TESTING"))
     print("Bot is ready")
 
+async def reload_extensions():
+    bot.reload_extension("extensions.coop")
+    bot.reload_extension("extensions.utils")
+    await slash.sync_all_commands()
 
+@bot.event
+async def on_guild_join(guild):
+    with open("config.json", "r") as f:
+        config = json.load(f)
+    config["guilds"][guild.id] = {"BOT_CHANNEL_ID": ""}
+    with open("config.json", "w") as f:
+        json.dump(config, f, indent=4)
+    await reload_extensions()
+
+@bot.event
+async def on_guild_remove(guild):
+    with open("config.json", "r") as f:
+        config = json.load(f)
+    config["guilds"].pop(guild.id)
+    with open("config.json", "w") as f:
+        json.dump(config, f, indent=4)
+    await reload_extensions()
+
+
+##########################
 ##### Owner commands #####
+##########################
 
 @bot.command(name="reloadext")
 @commands.is_owner()
 async def reload_extensions(ctx):
     try:
-        bot.reload_extension("extensions.coop")
-        bot.reload_extension("extensions.utils")
-        await slash.sync_all_commands()
+        await reload_extensions()
     except Exception as inst:
         await ctx.send(f"Administrative error (#1) :confounded:\n```{type(inst)}\n{inst}```")
         return
@@ -74,7 +101,9 @@ async def remove_from_server(ctx, id):
         await ctx.send(f"Left {guild.name} :wink:")
 
 
-##### Events #####
+##########################
+##### Command events #####
+##########################
 
 # TODO change ?
 @bot.event
@@ -90,12 +119,14 @@ async def on_slash_command_error(ctx, error):
         await ctx.send("Unauthorized command :no_entry_sign:", hidden=True)
 
 
+#########################
 ##### Base Commands #####
 
 @bot.command()
 @commands.is_owner()
 async def test(ctx):
     print()
+#########################
 
 @bot.command()
 @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
@@ -103,8 +134,12 @@ async def setuphere(ctx):
     """
     Bot init within the server
     """
-    # TODO
-    print()
+    with open("config.json", "r") as f:
+        config = json.load(f)
+    config["guilds"][ctx.guild.id]["BOT_CHANNEL_ID"] = ctx.channel.id
+    with open("config.json", "w") as f:
+        json.dump(config, f, indent=4)
+    ctx.send(f"Bot commands channel set as {ctx.channel.mention}")
 
 bot.remove_command("help")
 

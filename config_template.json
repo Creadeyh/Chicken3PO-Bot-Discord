@@ -1,5 +1,7 @@
 {
     "TOKEN": "[bot_token]",
     "COMMAND_PREFIX": "!",
-    "CHANNEL_ID": ""
+    "guilds": {
+        
+    }
 }
