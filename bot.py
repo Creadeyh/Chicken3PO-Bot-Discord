@@ -1,9 +1,8 @@
 import discord
 from discord.ext import commands
 from discord_slash import SlashCommand
+from discord_slash.context import *
 
-import os
-import asyncio
 import json
 
 
@@ -19,7 +18,7 @@ with open('config.json', 'r') as f:
     CHANNEL_ID = config["CHANNEL_ID"]
 
 bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents)
-slash = SlashCommand(bot, sync_commands=True)
+slash = SlashCommand(bot, sync_commands=True, sync_on_cog_reload=True)
 
 bot.load_extension("extensions.coop")
 bot.load_extension("extensions.utils")
@@ -41,6 +40,7 @@ async def reload_extensions(ctx):
     try:
         bot.reload_extension("extensions.coop")
         bot.reload_extension("extensions.utils")
+        await slash.sync_all_commands()
     except Exception as inst:
         await ctx.send(f"Administrative error (#1) :confounded:\n```{type(inst)}\n{inst}```")
         return
@@ -84,6 +84,11 @@ async def on_command_error(ctx, error):
     else:
         print(error)
 
+@bot.event
+async def on_slash_command_error(ctx, error):
+    if isinstance(error, commands.CheckAnyFailure):
+        await ctx.send("Unauthorized command :no_entry_sign:", hidden=True)
+
 
 ##### Base Commands #####
 
@@ -92,8 +97,12 @@ async def on_command_error(ctx, error):
 async def test(ctx):
     print()
 
-@bot.command()
-async def startup(ctx):
+@slash.slash(name="setuphere")
+@commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
+async def setuphere(ctx: SlashContext):
+    """
+    Bot init within the server
+    """
     # TODO
     print()
 
