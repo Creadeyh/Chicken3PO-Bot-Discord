@@ -30,4 +30,5 @@ def setup(bot):
     bot.add_cog(Utils(bot))
 
 def teardown(bot):
-    bot.remove_cog('Utils')
+    bot.remove_cog("Utils")
+    

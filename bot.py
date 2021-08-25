@@ -11,11 +11,11 @@ import json
 intents = discord.Intents.default()
 intents.members = True
 
-with open('config.json', 'r') as f:
+with open("config.json", "r") as f:
     config = json.load(f)
-    TOKEN = config['TOKEN']
-    COMMAND_PREFIX = config['COMMAND_PREFIX']
     CHANNEL_ID = config["CHANNEL_ID"]
+    TOKEN = config["TOKEN"]
+    COMMAND_PREFIX = config["COMMAND_PREFIX"]
 
 bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents)
 slash = SlashCommand(bot, sync_commands=True, sync_on_cog_reload=True)
@@ -27,7 +27,7 @@ utils = bot.get_cog("Utils")
 
 @bot.event
 async def on_ready():
-    await bot.change_presence(activity=discord.Game('Egg Inc with Wall-Egg | &help'))
+    await bot.change_presence(activity=discord.Game("Egg Inc with Wall-Egg | &help"))
     # await bot.change_presence(activity=discord.Game("DON'T USE I'M TESTING"))
     print("Bot is ready")
 
@@ -97,16 +97,16 @@ async def on_slash_command_error(ctx, error):
 async def test(ctx):
     print()
 
-@slash.slash(name="setuphere")
+@bot.command()
 @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
-async def setuphere(ctx: SlashContext):
+async def setuphere(ctx):
     """
     Bot init within the server
     """
     # TODO
     print()
 
-bot.remove_command('help')
+bot.remove_command("help")
 
 @bot.command()
 async def help(ctx):

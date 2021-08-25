@@ -9,7 +9,7 @@ from discord_slash.model import *
 
 import json
 
-with open('config.json', 'r') as f:
+with open("config.json", "r") as f:
     config = json.load(f)
     #GUILD_ID = config["GUILD_ID"]
     # TODO temp
@@ -98,4 +98,4 @@ def setup(bot):
     bot.add_cog(Coop(bot))
 
 def teardown(bot):
-    bot.remove_cog('Coop')
+    bot.remove_cog("Coop")
