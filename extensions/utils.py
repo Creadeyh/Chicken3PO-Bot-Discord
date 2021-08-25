@@ -30,11 +30,10 @@ class Utils(commands.Cog):
     def get_bot_channel_id(guild_id):
         with open("config.json", "r") as f:
             config = json.load(f)
-        return config["guilds"][guild_id]["BOT_CHANNEL_ID"]
+        return config["guilds"][str(guild_id)]["BOT_CHANNEL_ID"]
 
 def setup(bot):
     bot.add_cog(Utils(bot))
 
 def teardown(bot):
     bot.remove_cog("Utils")
-    

@@ -11,7 +11,10 @@ import json
 
 with open("config.json", "r") as f:
     config = json.load(f)
-    GUILD_IDS = config["guilds"].keys()
+    if config["guilds"]:
+        GUILD_IDS = list(map(int, config["guilds"].keys()))
+    else:
+        GUILD_IDS = []
 
 class Coop(commands.Cog):
 
@@ -21,7 +24,7 @@ class Coop(commands.Cog):
 
     def is_bot_channel():
         """
-        For slash commands' check_any decorator
+        For slash commands' decorator
         """
         def predicate(ctx):
             return ctx.channel.id == ctx.bot.get_cog("Utils").get_bot_channel_id(ctx.guild.id)
@@ -40,28 +43,31 @@ class Coop(commands.Cog):
     ##### Slash Commands #####
     ##########################
     
-    @cog_ext.cog_slash(name="contract", guild_ids=[GUILD_IDS])
-    @commands.check_any(is_bot_channel(), commands.is_owner(), commands.has_permissions(administrator=True))
+    @cog_ext.cog_slash(name="contract", guild_ids=GUILD_IDS)
+    @is_bot_channel()
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
     async def add_contract(self, ctx: SlashContext):
         # TODO
         # add leggacy button if leggacy
         print()
     
-    @cog_ext.cog_slash(name="coop", guild_ids=[GUILD_IDS])
-    @commands.check_any(is_bot_channel())
+    @cog_ext.cog_slash(name="coop", guild_ids=GUILD_IDS)
+    @is_bot_channel()
     async def add_coop(self, ctx: SlashContext):
         # TODO
         # add join button
         print()
 
-    @cog_ext.cog_slash(name="kick", guild_ids=[GUILD_IDS])
-    @commands.check_any(is_bot_channel(), commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator())
+    @cog_ext.cog_slash(name="kick", guild_ids=GUILD_IDS)
+    @is_bot_channel()
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator())
     async def kick_from_coop(self, ctx: SlashContext):
         # TODO
         print()
     
-    @cog_ext.cog_slash(name="codes", guild_ids=[GUILD_IDS])
-    @commands.check_any(is_bot_channel(), commands.is_owner(), commands.has_permissions(administrator=True))
+    @cog_ext.cog_slash(name="codes", guild_ids=GUILD_IDS)
+    @is_bot_channel()
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
     async def get_coop_codes(self, ctx: SlashContext):
         # TODO
         print()
@@ -72,7 +78,7 @@ class Coop(commands.Cog):
     #########################
 
     @cog_ext.cog_context_menu(name="Remove contract",
-                            guild_ids=[GUILD_IDS],
+                            guild_ids=GUILD_IDS,
                             target=ContextMenuType.MESSAGE)
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
     async def remove_contract(ctx: MenuContext):
@@ -80,7 +86,7 @@ class Coop(commands.Cog):
         print()
     
     @cog_ext.cog_context_menu(name="Coop completed",
-                            guild_ids=[GUILD_IDS],
+                            guild_ids=GUILD_IDS,
                             target=ContextMenuType.MESSAGE)
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator())
     async def coop_completed(ctx: MenuContext):
@@ -88,7 +94,7 @@ class Coop(commands.Cog):
         print()
 
     @cog_ext.cog_context_menu(name="Coop failed",
-                            guild_ids=[GUILD_IDS],
+                            guild_ids=GUILD_IDS,
                             target=ContextMenuType.MESSAGE)
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator())
     async def coop_failed(ctx: MenuContext):

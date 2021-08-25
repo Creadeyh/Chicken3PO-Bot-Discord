@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord_slash import SlashCommand
 from discord_slash.context import *
+from discord_slash.error import CheckFailure
 
 import json
 
@@ -44,7 +45,7 @@ async def reload_extensions():
 async def on_guild_join(guild):
     with open("config.json", "r") as f:
         config = json.load(f)
-    config["guilds"][guild.id] = {"BOT_CHANNEL_ID": ""}
+    config["guilds"][str(guild.id)] = {"BOT_CHANNEL_ID": ""}
     with open("config.json", "w") as f:
         json.dump(config, f, indent=4)
     await reload_extensions()
@@ -53,7 +54,7 @@ async def on_guild_join(guild):
 async def on_guild_remove(guild):
     with open("config.json", "r") as f:
         config = json.load(f)
-    config["guilds"].pop(guild.id)
+    config["guilds"].pop(str(guild.id))
     with open("config.json", "w") as f:
         json.dump(config, f, indent=4)
     await reload_extensions()
@@ -65,7 +66,7 @@ async def on_guild_remove(guild):
 
 @bot.command(name="reloadext")
 @commands.is_owner()
-async def reload_extensions(ctx):
+async def reload_extensions_command(ctx):
     try:
         await reload_extensions()
     except Exception as inst:
@@ -115,8 +116,12 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_slash_command_error(ctx, error):
-    if isinstance(error, commands.CheckAnyFailure):
+    if isinstance(error, CheckFailure):
+        await ctx.send("Unauthorized channel for this command :no_entry_sign:", hidden=True)
+    elif isinstance(error, commands.CheckAnyFailure):
         await ctx.send("Unauthorized command :no_entry_sign:", hidden=True)
+    else:
+        print(error)
 
 
 #########################
@@ -129,6 +134,7 @@ async def test(ctx):
 #########################
 
 @bot.command()
+@commands.guild_only()
 @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
 async def setuphere(ctx):
     """
@@ -136,10 +142,10 @@ async def setuphere(ctx):
     """
     with open("config.json", "r") as f:
         config = json.load(f)
-    config["guilds"][ctx.guild.id]["BOT_CHANNEL_ID"] = ctx.channel.id
+    config["guilds"][str(ctx.guild.id)]["BOT_CHANNEL_ID"] = ctx.channel.id
     with open("config.json", "w") as f:
         json.dump(config, f, indent=4)
-    ctx.send(f"Bot commands channel set as {ctx.channel.mention}")
+    await ctx.send(f"Bot commands channel set as {ctx.channel.mention}")
 
 bot.remove_command("help")
 
