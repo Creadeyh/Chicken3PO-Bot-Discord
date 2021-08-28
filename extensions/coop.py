@@ -31,16 +31,19 @@ class Coop(commands.Cog):
             return ctx.channel.id == ctx.bot.get_cog("Utils").get_bot_channel_id(ctx.guild.id)
         return commands.check(predicate)
 
-    def is_coop_creator():
+    def is_coop_creator_context_menu():
         def predicate(ctx):
-            # TODO ctx.bot
-            return ctx.author.id == ""
+            running_coops = ctx.bot.get_cog("Utils").read_json("running_coops")
+            for contract in running_coops:
+                for coop in contract["coops"]:
+                    if ctx.target_message.id == coop["message_id"] and ctx.author.id == coop["creator"]:
+                        return True
+            return False
         return commands.check(predicate)
     
     def check_context_menu_target_contract():
         def predicate(ctx):
-            utils = ctx.bot.get_cog("Utils")
-            running_coops = utils.read_json("running_coops")
+            running_coops = ctx.bot.get_cog("Utils").read_json("running_coops")
             for contract in running_coops:
                 if ctx.target_message.id == contract["message_id"]:
                     return True
@@ -49,8 +52,7 @@ class Coop(commands.Cog):
 
     def check_context_menu_target_coop():
         def predicate(ctx):
-            utils = ctx.bot.get_cog("Utils")
-            running_coops = utils.read_json("running_coops")
+            running_coops = ctx.bot.get_cog("Utils").read_json("running_coops")
             for contract in running_coops:
                 for coop in contract["coops"]:
                     if ctx.target_message.id == coop["message_id"]:
@@ -79,7 +81,7 @@ class Coop(commands.Cog):
 
     @cog_ext.cog_slash(name="kick", guild_ids=GUILD_IDS)
     @is_bot_channel()
-    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator())
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))# TODO, is_coop_creator())
     async def kick_from_coop(self, ctx: SlashContext):
         # TODO
         print()
@@ -109,7 +111,7 @@ class Coop(commands.Cog):
                             guild_ids=GUILD_IDS,
                             target=ContextMenuType.MESSAGE)
     @check_context_menu_target_coop()
-    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator())
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_context_menu())
     async def coop_completed(ctx: MenuContext):
         # TODO
         print()
@@ -118,7 +120,7 @@ class Coop(commands.Cog):
                             guild_ids=GUILD_IDS,
                             target=ContextMenuType.MESSAGE)
     @check_context_menu_target_coop()
-    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator())
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_context_menu())
     async def coop_failed(ctx: MenuContext):
         # TODO
         print()
