@@ -8,6 +8,7 @@ from discord_slash.utils.manage_commands import *
 from discord_slash.model import *
 
 import json
+from datetime import date
 
 with open("config.json", "r") as f:
     config = json.load(f)
@@ -64,13 +65,105 @@ class Coop(commands.Cog):
     ##### Slash Commands #####
     ##########################
     
-    @cog_ext.cog_slash(name="contract", guild_ids=GUILD_IDS)
+    @cog_ext.cog_slash(name="contract",
+                        description="Registers a new contract",
+                        guild_ids=GUILD_IDS,
+                        options=[
+                            create_option(
+                                name="contract_id",
+                                description="The unique ID for an EggInc contract",
+                                option_type=SlashCommandOptionType.STRING,
+                                required=True
+                            ),
+                            create_option(
+                                name="size",
+                                description="Number of slots available in the contract",
+                                option_type=SlashCommandOptionType.INTEGER,
+                                required=True
+                            ),
+                            create_option(
+                                name="is_leggacy",
+                                description="If the contract is a leggacy or not",
+                                option_type=SlashCommandOptionType.BOOLEAN,
+                                required=True
+                            )
+                        ])
     @is_bot_channel()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
-    async def add_contract(self, ctx: SlashContext):
-        # TODO
-        # add leggacy button if leggacy
-        print()
+    async def add_contract(self, ctx: SlashContext, contract_id: str, size: int, is_leggacy: bool):
+        
+        running_coops = self.utils.read_json("running_coops")
+        if contract_id in running_coops.keys():
+            await ctx.send(":warning: Contract already exists", hidden=True)
+            return
+        
+        # Creates a category and channel below commands channel for the contract, where coops will be listed
+        category = await ctx.guild.create_category(contract_id)
+        await category.move(after=ctx.channel.category)
+        channel = await category.create_text_channel(contract_id,
+                                                    overwrites={
+                                                        ctx.guild.default_role: discord.PermissionOverwrite(send_messages=False,
+                                                                                                            add_reactions=False
+                                                                                                            ),
+                                                        discord.utils.get(ctx.guild.roles, name="Chicken3PO"): discord.PermissionOverwrite(send_messages=True)
+                                                    })
+        
+        # TODO if leggacy, check if player has participated in original contract in archive
+        # Gets mentions and ids of people without the AFK role
+        afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
+        remaining_ids = []
+        remaining_mentions = []
+        for member in ctx.guild.members:
+            if not member.bot and afk_role not in member.roles:
+                remaining_ids.append(member.id)
+                remaining_mentions.append(member.mention)
+        
+        # Sends the contract message
+        contract_string = ("============================================================\n"
+                        + f"**{'LEGGACY ' if is_leggacy else ''}Contract available**\n"
+                        + f"*Contract ID:* `{contract_id}`\n"
+                        + f"*Coop size:* {size}\n"
+                        + "============================================================\n\n"
+                        + ("**Already done:**\n\n" if is_leggacy else "")
+                        + f"**Remaining:** {''.join(remaining_mentions)}\n"
+                        )
+        if is_leggacy:
+            action_row = [create_actionrow(create_button(style=ButtonStyle.blurple, label="I've already done this contract", custom_id=f"leggacy_{contract_id}"))]
+        else:
+            action_row = None
+        message = await channel.send(contract_string, components=action_row)
+        
+        # Creates the contract in running_coops JSON
+        contract_date = date.today().strftime("%Y-%m-%d")
+        dic_contract = {
+            "size": size,
+            "date": contract_date,
+            "is_leggacy": is_leggacy,
+            "channel_id": channel.id,
+            "message_id": message.id,
+            "coops": [],
+            "remaining": remaining_ids
+        }
+        if is_leggacy:
+            dic_contract["already_done"] = []
+        
+        running_coops[contract_id] = dic_contract
+        self.utils.save_json("running_coops", running_coops)
+
+        # Creates the contract in archive JSON
+        archive = self.utils.read_json("participation_archive")
+        if not contract_id in archive.keys():
+            archive[contract_id] = {}
+        
+        participation = {}
+        for id in remaining_ids:
+            participation[str(id)] = "no"
+        
+        archive[contract_id][contract_date] = {
+            "is_leggacy": is_leggacy,
+            "participation": participation
+        }
+        self.utils.save_json("participation_archive", archive)
     
     @cog_ext.cog_slash(name="coop", guild_ids=GUILD_IDS)
     @is_bot_channel()
