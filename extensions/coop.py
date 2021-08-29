@@ -224,10 +224,45 @@ class Coop(commands.Cog):
     ##################
 
     @commands.Cog.listener()
-    async def on_component(ctx: ComponentContext):
+    async def on_component(self, ctx: ComponentContext):
         # TODO
-        # buttons leggacy or join
-        print()
+        # button join coop
+        utils = ctx.bot.get_cog("Utils")
+
+        # Already done leggacy button
+        if ctx.custom_id.startswith("leggacy_"):
+            contract_id = ctx.custom_id.split('_')[1]
+
+            # Update running_coops JSON
+            running_coops = utils.read_json("running_coops")
+            member = ctx.author
+            if member.id in running_coops[contract_id]["already_done"]:
+                await ctx.send("You already told me that :smile:", hidden=True)
+                return
+            running_coops[contract_id]["remaining"].remove(member.id)
+            running_coops[contract_id]["already_done"].append(member.id)
+            utils.save_json("running_coops", running_coops)
+
+            # Update archive JSON
+            archive = utils.read_json("participation_archive")
+            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member.id)] = "leggacy"
+            utils.save_json("participation_archive", archive)
+
+            # Update contract message
+            already_done_mentions = []
+            for id in running_coops[contract_id]["already_done"]:
+                already_done_mentions.append(ctx.guild.get_member(id).mention)
+            remaining_mentions = []
+            for id in running_coops[contract_id]["remaining"]:
+                remaining_mentions.append(ctx.guild.get_member(id).mention)
+            
+            content = ctx.origin_message.content
+            index = content.index("**Already done:**")
+            new_content = (content[:index]
+                            + f"**Already done:** {''.join(already_done_mentions)}\n\n"
+                            + f"**Remaining:** {''.join(remaining_mentions)}\n"
+                            )
+            await ctx.edit_origin(content=new_content)
 
 
 def setup(bot):
