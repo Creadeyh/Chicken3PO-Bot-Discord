@@ -20,8 +20,8 @@ with open("config.json", "r") as f:
 bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents)
 slash = SlashCommand(bot, sync_commands=True, sync_on_cog_reload=True)
 
-bot.load_extension("extensions.coop")
 bot.load_extension("extensions.utils")
+bot.load_extension("extensions.coop")
 coop = bot.get_cog("Coop")
 utils = bot.get_cog("Utils")
 
