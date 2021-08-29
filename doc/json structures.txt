@@ -5,6 +5,7 @@ data/running_coops.json:
 		"size" : [contract-size],
 		"date" : [date]
 		"is_leggacy" : True/False,
+		"channel_id": [channel_id],
 		"message_id": [message-id],
 		"coops" : [
 			{
@@ -20,6 +21,10 @@ data/running_coops.json:
 			...
 		],
 		"remaining" : [
+			[discord-id],
+			...
+		],
+		"already_done": [ # If leggacy
 			[discord-id],
 			...
 		]
@@ -51,11 +56,13 @@ data/participation_archive.json:
 	}
 }
 
-data/name_index.json:
-Reference for people's Discord ID and their EggInc/Discord name
+data/alt_index.json:
+Reference for people's Discord ID and their main and alt EggInc name
 
 {
-	[discord-id] : "[egginc-name] ([discord-name])",
+	[discord-id] : {
+		"main": "[egginc-name]",
+		"alt": "[egginc-name]"
+	},
 	...
-	# Alt accounts are alt+discord-id
 }
