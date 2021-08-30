@@ -96,6 +96,9 @@ class Coop(commands.Cog):
         if contract_id in running_coops.keys():
             await ctx.send(":warning: Contract already exists", hidden=True)
             return
+        if size <= 1:
+            await ctx.send(":warning: Invalid contract size", hidden=True)
+            return
         
         # Creates a category and channel below commands channel for the contract, where coops will be listed
         category = await ctx.guild.create_category(contract_id)
@@ -221,6 +224,10 @@ class Coop(commands.Cog):
         running_coops[contract_id]["remaining"].remove(ctx.author.id)
         self.utils.save_json("running_coops", running_coops)
 
+        # Notif to coop organizers
+        if len(running_coops[contract_id]["remaining"]) == 0:
+            await self.send_notif_no_remaining(ctx.guild, contract_id)
+
         # Updates archive JSON
         archive = self.utils.read_json("participation_archive")
         archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(ctx.author.id)] = "yes"
@@ -299,7 +306,6 @@ class Coop(commands.Cog):
             contract_id = ctx.custom_id.split('_')[1]
             coop_nb = int(ctx.custom_id.split('_')[2])
 
-            # Updates running_coops JSON
             running_coops = utils.read_json("running_coops")
             member = ctx.author
             if "already_done" in running_coops[contract_id].keys() and member.id in running_coops[contract_id]["already_done"]:
@@ -309,9 +315,15 @@ class Coop(commands.Cog):
                 if member.id in coop["members"]:
                     await ctx.send("You have already joined a coop for this contract :smile:", hidden=True)
                     return
+            
+            # Updates running_coops JSON
             running_coops[contract_id]["remaining"].remove(member.id)
             running_coops[contract_id]["coops"][coop_nb-1]["members"].append(member.id)
             utils.save_json("running_coops", running_coops)
+
+            # Notif to coop organizers
+            if len(running_coops[contract_id]["remaining"]) == 0:
+                await self.send_notif_no_remaining(ctx.guild, contract_id)
 
             # Updates archive JSON
             archive = utils.read_json("participation_archive")
@@ -357,7 +369,6 @@ class Coop(commands.Cog):
         elif ctx.custom_id.startswith("leggacy_"):
             contract_id = ctx.custom_id.split('_')[1]
 
-            # Updates running_coops JSON
             running_coops = utils.read_json("running_coops")
             member = ctx.author
             if member.id in running_coops[contract_id]["already_done"]:
@@ -367,10 +378,16 @@ class Coop(commands.Cog):
                 if member.id in coop["members"]:
                     await ctx.send("You have already joined a coop for this contract :smile:", hidden=True)
                     return
+            
+            # Updates running_coops JSON
             if member.id in running_coops[contract_id]["remaining"]:
                 running_coops[contract_id]["remaining"].remove(member.id)
             running_coops[contract_id]["already_done"].append(member.id)
             utils.save_json("running_coops", running_coops)
+
+            # Notif to coop organizers
+            if len(running_coops[contract_id]["remaining"]) == 0:
+                await self.send_notif_no_remaining(ctx.guild, contract_id)
 
             # Updates archive JSON
             archive = utils.read_json("participation_archive")
@@ -393,6 +410,15 @@ class Coop(commands.Cog):
                             )
             await ctx.edit_origin(content=new_content)
 
+
+    ########################
+    ##### Misc methods #####
+    ########################
+
+    async def send_notif_no_remaining(self, guild, contract_id):
+        orga_role = discord.utils.get(guild.roles, name="Coop Organizer")
+        for member in orga_role.members:
+            await member.dm_channel.send(f"Everyone has joined a coop for the contract `{contract_id}` :tada:")
 
 def setup(bot):
     bot.add_cog(Coop(bot))
