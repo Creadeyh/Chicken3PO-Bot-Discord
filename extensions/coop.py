@@ -292,12 +292,69 @@ class Coop(commands.Cog):
 
     @commands.Cog.listener()
     async def on_component(self, ctx: ComponentContext):
-        # TODO
-        # button join coop
         utils = ctx.bot.get_cog("Utils")
 
+        # Join coop button
+        if ctx.custom_id.startswith("joincoop_"):
+            contract_id = ctx.custom_id.split('_')[1]
+            coop_nb = int(ctx.custom_id.split('_')[2])
+
+            # Updates running_coops JSON
+            running_coops = utils.read_json("running_coops")
+            member = ctx.author
+            if "already_done" in running_coops[contract_id].keys() and member.id in running_coops[contract_id]["already_done"]:
+                await ctx.send("You have already completed this contract :smile:", hidden=True)
+                return
+            for coop in running_coops[contract_id]["coops"]:
+                if member.id in coop["members"]:
+                    await ctx.send("You have already joined a coop for this contract :smile:", hidden=True)
+                    return
+            running_coops[contract_id]["remaining"].remove(member.id)
+            running_coops[contract_id]["coops"][coop_nb-1]["members"].append(member.id)
+            utils.save_json("running_coops", running_coops)
+
+            # Updates archive JSON
+            archive = utils.read_json("participation_archive")
+            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member.id)] = "yes"
+            utils.save_json("participation_archive", archive)
+
+            # Updates contract message
+            remaining_mentions = []
+            for id in running_coops[contract_id]["remaining"]:
+                remaining_mentions.append(ctx.guild.get_member(id).mention)
+                
+            channel = discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"])
+            contract_message = await channel.fetch_message(running_coops[contract_id]["message_id"])
+            remaining_index = contract_message.content.index("**Remaining:**")
+            new_contract_content = contract_message.content[:remaining_index] + f"**Remaining:** {''.join(remaining_mentions)}\n"
+            await contract_message.edit(content=new_contract_content)
+
+            # Updates coop message
+            coop_dic = running_coops[contract_id]["coops"][coop_nb-1]
+            member_count = len(coop_dic["members"])
+            if member_count == running_coops[contract_id]['size']:
+                full = True
+            else:
+                full = False
+            coop_dic["members"].remove(coop_dic["creator"])
+            coop_message = await channel.fetch_message(coop_dic["message_id"])
+
+            coop_embed = ctx.origin_message.embeds[0]
+            coop_embed.title = f"Coop {coop_nb} - {member_count}/{running_coops[contract_id]['size']}{' FULL' if full else ''}"
+            desc = f"**Members:**\n- {ctx.guild.get_member(coop_dic['creator']).mention} (Creator)\n"
+            for member_id in coop_dic["members"]:
+                desc = desc + f"- {ctx.guild.get_member(member_id).mention}\n"
+            coop_embed.description = desc
+
+            action_row = [create_actionrow(create_button(style=ButtonStyle.green,
+                                                        label="Join",
+                                                        custom_id=f"joincoop_{contract_id}_{coop_nb}",
+                                                        disabled=full
+                                                        ))]
+            await ctx.edit_origin(embed=coop_embed, components=action_row)
+        
         # Already done leggacy button
-        if ctx.custom_id.startswith("leggacy_"):
+        elif ctx.custom_id.startswith("leggacy_"):
             contract_id = ctx.custom_id.split('_')[1]
 
             # Updates running_coops JSON
