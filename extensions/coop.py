@@ -119,11 +119,11 @@ class Coop(commands.Cog):
                 remaining_mentions.append(member.mention)
         
         # Sends the contract message
-        contract_string = ("============================================================\n"
+        contract_string = ("==============================\n"
                         + f"**{'LEGGACY ' if is_leggacy else ''}Contract available**\n"
                         + f"*Contract ID:* `{contract_id}`\n"
                         + f"*Coop size:* {size}\n"
-                        + "============================================================\n\n"
+                        + "==============================\n\n"
                         + ("**Already done:**\n\n" if is_leggacy else "")
                         + f"**Remaining:** {''.join(remaining_mentions)}\n"
                         )
@@ -164,6 +164,9 @@ class Coop(commands.Cog):
             "participation": participation
         }
         self.utils.save_json("participation_archive", archive)
+
+        # Responds to the interaction
+        await ctx.send("Contract registered :white_check_mark:", hidden=True)
     
     @cog_ext.cog_slash(name="coop", guild_ids=GUILD_IDS)
     @is_bot_channel()
@@ -233,22 +236,27 @@ class Coop(commands.Cog):
         if ctx.custom_id.startswith("leggacy_"):
             contract_id = ctx.custom_id.split('_')[1]
 
-            # Update running_coops JSON
+            # Updates running_coops JSON
             running_coops = utils.read_json("running_coops")
             member = ctx.author
             if member.id in running_coops[contract_id]["already_done"]:
                 await ctx.send("You already told me that :smile:", hidden=True)
                 return
-            running_coops[contract_id]["remaining"].remove(member.id)
+            for coop in running_coops[contract_id]["coops"]:
+                if member.id in coop["members"]:
+                    await ctx.send("You have already joined a coop for this contract :smile:", hidden=True)
+                    return
+            if member.id in running_coops[contract_id]["remaining"]:
+                running_coops[contract_id]["remaining"].remove(member.id)
             running_coops[contract_id]["already_done"].append(member.id)
             utils.save_json("running_coops", running_coops)
 
-            # Update archive JSON
+            # Updates archive JSON
             archive = utils.read_json("participation_archive")
             archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member.id)] = "leggacy"
             utils.save_json("participation_archive", archive)
 
-            # Update contract message
+            # Updates contract message
             already_done_mentions = []
             for id in running_coops[contract_id]["already_done"]:
                 already_done_mentions.append(ctx.guild.get_member(id).mention)
