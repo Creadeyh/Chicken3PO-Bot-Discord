@@ -168,12 +168,76 @@ class Coop(commands.Cog):
         # Responds to the interaction
         await ctx.send("Contract registered :white_check_mark:", hidden=True)
     
-    @cog_ext.cog_slash(name="coop", guild_ids=GUILD_IDS)
+    @cog_ext.cog_slash(name="coop",
+                        description="Registers a new coop",
+                        guild_ids=GUILD_IDS,
+                        options=[
+                            create_option(
+                                name="contract_id",
+                                description="The unique ID for an EggInc contract",
+                                option_type=SlashCommandOptionType.STRING,
+                                required=True
+                            ),
+                            create_option(
+                                name="coop_code",
+                                description="The code to join the coop",
+                                option_type=SlashCommandOptionType.STRING,
+                                required=True
+                            )
+                        ])
     @is_bot_channel()
-    async def add_coop(self, ctx: SlashContext):
-        # TODO
-        # add join button
-        print()
+    async def add_coop(self, ctx: SlashContext, contract_id: str, coop_code: str):
+        
+        running_coops = self.utils.read_json("running_coops")
+        if contract_id not in running_coops.keys():
+            await ctx.send(":warning: Contract does not exist", hidden=True)
+            return
+        if "already_done" in running_coops[contract_id].keys() and ctx.author.id in running_coops[contract_id]["already_done"]:
+            await ctx.send("You have already completed this contract :smile:", hidden=True)
+            return
+        for coop in running_coops[contract_id]["coops"]:
+            if ctx.author.id in coop["members"]:
+                await ctx.send("You have already joined a coop for this contract :smile:", hidden=True)
+                return
+
+        # Creates coop message with join button
+        coop_nb = len(running_coops[contract_id]["coops"]) + 1
+        contract_channel = discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"])
+        action_row = [create_actionrow(create_button(style=ButtonStyle.green, label="Join", custom_id=f"joincoop_{contract_id}_{coop_nb}"))]
+        coop_embed = discord.Embed(color=discord.Color.random(),
+                                    title=f"Coop {coop_nb} - 1/{running_coops[contract_id]['size']}",
+                                    description=f"**Members:**\n- {ctx.author.mention} (Creator)\n"
+                                    )
+        message = await contract_channel.send(embed=coop_embed, components=action_row)
+
+        # Updates running_coops JSON
+        coop_dic = {
+            "code": coop_code,
+            "creator": ctx.author.id,
+            "message_id": message.id,
+            "members": [ctx.author.id]
+        }
+        running_coops[contract_id]["coops"].append(coop_dic)
+        running_coops[contract_id]["remaining"].remove(ctx.author.id)
+        self.utils.save_json("running_coops", running_coops)
+
+        # Updates archive JSON
+        archive = self.utils.read_json("participation_archive")
+        archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(ctx.author.id)] = "yes"
+        self.utils.save_json("participation_archive", archive)
+
+        # Updates contract message
+        remaining_mentions = []
+        for id in running_coops[contract_id]["remaining"]:
+            remaining_mentions.append(ctx.guild.get_member(id).mention)
+        
+        contract_message = await contract_channel.fetch_message(running_coops[contract_id]["message_id"])
+        remaining_index = contract_message.content.index("**Remaining:**")
+        new_contract_content = contract_message.content[:remaining_index] + f"**Remaining:** {''.join(remaining_mentions)}\n"
+        await contract_message.edit(content=new_contract_content)
+
+        # Responds to the interaction
+        await ctx.send("Coop registered :white_check_mark:", hidden=True)
 
     @cog_ext.cog_slash(name="kick", guild_ids=GUILD_IDS)
     @is_bot_channel()
