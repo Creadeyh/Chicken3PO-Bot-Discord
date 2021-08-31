@@ -264,12 +264,42 @@ class Coop(commands.Cog):
         # TODO
         print()
     
-    @cog_ext.cog_slash(name="codes", guild_ids=GUILD_IDS)
+    @cog_ext.cog_slash(name="codes",
+                        description="Sends in DM the codes of currently running coops",
+                        guild_ids=GUILD_IDS,
+                        options=[
+                            create_option(
+                                name="contract_id",
+                                description="The contract for which you want the coop codes. If not given, sends for all contracts",
+                                option_type=SlashCommandOptionType.STRING,
+                                required=False
+                            )
+                        ])
     @is_bot_channel()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
-    async def get_coop_codes(self, ctx: SlashContext):
-        # TODO
-        print()
+    async def get_coop_codes(self, ctx: SlashContext, contract_id: str=""):
+
+        running_coops = self.utils.read_json("running_coops")
+
+        if contract_id:
+            if contract_id not in running_coops.keys():
+                await ctx.send(":warning: Contract does not exist or is not currently running", hidden=True)
+                return
+            contract_ids = [contract_id]
+        else:
+            contract_ids = running_coops.keys()
+        
+        message = "__**Coop codes:**__\n"
+        for id in contract_ids:
+            message = message + "\n" + f"**Contract `{id}`:**\n"
+            for i in range(len(running_coops[id]["coops"])):
+                message = message + f"- Coop {i+1}: `{running_coops[id]['coops'][i]['code']}`\n"
+
+        if ctx.author.dm_channel == None:
+            await ctx.author.create_dm()
+        await ctx.author.dm_channel.send(message)
+
+        await ctx.send("Sent in your DMs :white_check_mark:", hidden=True)
 
 
     #########################
