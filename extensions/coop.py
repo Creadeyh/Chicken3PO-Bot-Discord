@@ -111,15 +111,24 @@ class Coop(commands.Cog):
                                                         discord.utils.get(ctx.guild.roles, name="Chicken3PO"): discord.PermissionOverwrite(send_messages=True)
                                                     })
         
-        # TODO if leggacy, check if player has participated in original contract in archive
-        # Gets mentions and ids of people without the AFK role
+        # Gets people without the AFK role and who haven't done the contract already (according to bot archive)
+        archive = self.utils.read_json("participation_archive")
+
+        def member_in_previous_coop(member_id):
+            for contract in archive[contract_id].values():
+                if str(member_id) in contract["participation"].keys() and contract["participation"][str(member_id)] in ["yes", "leggacy"]:
+                    return True
+            return False
+        
         afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
-        remaining_ids = []
-        remaining_mentions = []
+        remaining = []
+        already_done = []
         for member in ctx.guild.members:
             if not member.bot and afk_role not in member.roles:
-                remaining_ids.append(member.id)
-                remaining_mentions.append(member.mention)
+                if is_leggacy and member_in_previous_coop(member.id):
+                    already_done.append(member)
+                else:
+                    remaining.append(member)
         
         # Sends the contract message
         contract_string = ("==============================\n"
@@ -127,8 +136,8 @@ class Coop(commands.Cog):
                         + f"*Contract ID:* `{contract_id}`\n"
                         + f"*Coop size:* {size}\n"
                         + "==============================\n\n"
-                        + ("**Already done:**\n\n" if is_leggacy else "")
-                        + f"**Remaining:** {''.join(remaining_mentions)}\n"
+                        + (f"**Already done:** {''.join([member.mention for member in already_done])}\n\n" if is_leggacy else "")
+                        + f"**Remaining:** {''.join([member.mention for member in remaining])}\n"
                         )
         if is_leggacy:
             action_row = [create_actionrow(create_button(style=ButtonStyle.blurple, label="I've already done this contract", custom_id=f"leggacy_{contract_id}"))]
@@ -145,7 +154,7 @@ class Coop(commands.Cog):
             "channel_id": channel.id,
             "message_id": message.id,
             "coops": [],
-            "remaining": remaining_ids
+            "remaining": [member.id for member in remaining]
         }
         if is_leggacy:
             dic_contract["already_done"] = []
@@ -154,13 +163,12 @@ class Coop(commands.Cog):
         self.utils.save_json("running_coops", running_coops)
 
         # Creates the contract in archive JSON
-        archive = self.utils.read_json("participation_archive")
         if not contract_id in archive.keys():
             archive[contract_id] = {}
         
         participation = {}
-        for id in remaining_ids:
-            participation[str(id)] = "no"
+        for member in remaining:
+            participation[str(member.id)] = "no"
         
         archive[contract_id][contract_date] = {
             "is_leggacy": is_leggacy,
