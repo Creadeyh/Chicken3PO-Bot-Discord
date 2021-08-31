@@ -360,7 +360,6 @@ class Coop(commands.Cog):
             else:
                 full = False
             coop_dic["members"].remove(coop_dic["creator"])
-            coop_message = await channel.fetch_message(coop_dic["message_id"])
 
             coop_embed = ctx.origin_message.embeds[0]
             coop_embed.title = f"Coop {coop_nb} - {member_count}/{running_coops[contract_id]['size']}{' FULL' if full else ''}"
@@ -429,6 +428,8 @@ class Coop(commands.Cog):
     async def send_notif_no_remaining(self, guild, contract_id):
         orga_role = discord.utils.get(guild.roles, name="Coop Organizer")
         for member in orga_role.members:
+            if member.dm_channel == None:
+                await member.create_dm()
             await member.dm_channel.send(f"Everyone has joined a coop for the contract `{contract_id}` :tada:")
 
 def setup(bot):
