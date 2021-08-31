@@ -93,8 +93,13 @@ class Coop(commands.Cog):
     async def add_contract(self, ctx: SlashContext, contract_id: str, size: int, is_leggacy: bool):
         
         running_coops = self.utils.read_json("running_coops")
+        archive = self.utils.read_json("participation_archive")
+
         if contract_id in running_coops.keys():
             await ctx.send(":warning: Contract already exists", hidden=True)
+            return
+        if not is_leggacy and contract_id in archive.keys():
+            await ctx.send(":warning: Contract has to be a leggacy. Already registered in archive", hidden=True)
             return
         if size <= 1:
             await ctx.send(":warning: Invalid contract size", hidden=True)
@@ -112,8 +117,6 @@ class Coop(commands.Cog):
                                                     })
         
         # Gets people without the AFK role and who haven't done the contract already (according to bot archive)
-        archive = self.utils.read_json("participation_archive")
-
         def member_in_previous_coop(member_id):
             for contract in archive[contract_id].values():
                 if str(member_id) in contract["participation"].keys() and contract["participation"][str(member_id)] in ["yes", "leggacy"]:
