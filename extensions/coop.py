@@ -374,6 +374,12 @@ class Coop(commands.Cog):
                                                         disabled=full
                                                         ))]
             await ctx.edit_origin(embed=coop_embed, components=action_row)
+
+            # Sends coop code in DM
+            if ctx.author.dm_channel == None:
+                await ctx.author.create_dm()
+            await ctx.author.dm_channel.send(f"Code to join **Coop {coop_nb}** of contract **{contract_id}** is: `{coop_dic['code']}`\n" +
+                                            "Don't forget to activate your deflector and ship in bottle :wink:")
         
         # Already done leggacy button
         elif ctx.custom_id.startswith("leggacy_"):
