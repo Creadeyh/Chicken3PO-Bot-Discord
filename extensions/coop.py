@@ -32,10 +32,23 @@ class Coop(commands.Cog):
             return ctx.channel.id == ctx.bot.get_cog("Utils").get_bot_channel_id(ctx.guild.id)
         return commands.check(predicate)
 
+    def is_coop_creator_slash_command():
+        """
+        Checks if command author is creator of at least one of the running coops
+        """
+        def predicate(ctx):
+            running_coops = ctx.bot.get_cog("Utils").read_json("running_coops")
+            for contract in running_coops.values():
+                for coop in contract["coops"]:
+                    if ctx.author.id == coop["creator"]:
+                        return True
+            return False
+        return commands.check(predicate)
+    
     def is_coop_creator_context_menu():
         def predicate(ctx):
             running_coops = ctx.bot.get_cog("Utils").read_json("running_coops")
-            for contract in running_coops:
+            for contract in running_coops.values():
                 for coop in contract["coops"]:
                     if ctx.target_message.id == coop["message_id"] and ctx.author.id == coop["creator"]:
                         return True
