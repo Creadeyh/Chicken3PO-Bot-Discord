@@ -12,6 +12,7 @@ data/running_coops.json:
 				"code" : [coop-code],
 				"creator" : [discord-id],
 				"message_id": [message-id],
+				"locked": true/false,
 				"members" : [
 					[discord-id],
 					...

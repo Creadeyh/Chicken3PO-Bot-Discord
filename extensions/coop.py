@@ -210,10 +210,16 @@ class Coop(commands.Cog):
                                 description="The code to join the coop",
                                 option_type=SlashCommandOptionType.STRING,
                                 required=True
+                            ),
+                            create_option(
+                                name="locked",
+                                description="Whether or not the coop is locked at creation. Prevents people from joining",
+                                option_type=SlashCommandOptionType.BOOLEAN,
+                                required=False
                             )
                         ])
     @is_bot_channel()
-    async def add_coop(self, ctx: SlashContext, contract_id: str, coop_code: str):
+    async def add_coop(self, ctx: SlashContext, contract_id: str, coop_code: str, locked: bool=False):
         
         running_coops = self.utils.read_json("running_coops")
         if contract_id not in running_coops.keys():
@@ -230,7 +236,11 @@ class Coop(commands.Cog):
         # Creates coop message with join button
         coop_nb = len(running_coops[contract_id]["coops"]) + 1
         contract_channel = discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"])
-        action_row = [create_actionrow(create_button(style=ButtonStyle.green, label="Join", custom_id=f"joincoop_{contract_id}_{coop_nb}"))]
+        action_row = [create_actionrow(create_button(style=ButtonStyle.green,
+                                                    label=f"{'LOCKED' if locked else 'Join'}",
+                                                    custom_id=f"joincoop_{contract_id}_{coop_nb}",
+                                                    disabled=locked
+                                                    ))]
         coop_embed = discord.Embed(color=discord.Color.random(),
                                     title=f"Coop {coop_nb} - 1/{running_coops[contract_id]['size']}",
                                     description=f"**Members:**\n- {ctx.author.mention} (Creator)\n"
@@ -242,6 +252,7 @@ class Coop(commands.Cog):
             "code": coop_code,
             "creator": ctx.author.id,
             "message_id": message.id,
+            "locked": locked,
             "members": [ctx.author.id]
         }
         running_coops[contract_id]["coops"].append(coop_dic)
@@ -269,6 +280,144 @@ class Coop(commands.Cog):
 
         # Responds to the interaction
         await ctx.send("Coop registered :white_check_mark:", hidden=True)
+
+    @cog_ext.cog_slash(name="lock",
+                        description="Locks a coop, preventing people from joining",
+                        guild_ids=GUILD_IDS,
+                        options=[
+                            create_option(
+                                name="contract_id",
+                                description="The unique ID for an EggInc contract",
+                                option_type=SlashCommandOptionType.STRING,
+                                required=True
+                            ),
+                            create_option(
+                                name="coop_nb",
+                                description="The number of the coop. If not given, looks for the contract of which you are the creator",
+                                option_type=SlashCommandOptionType.INTEGER,
+                                required=False
+                            )
+                        ])
+    @is_bot_channel()
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_slash_command())
+    async def lock_coop(self, ctx: SlashContext, contract_id: str, coop_nb: int=None):
+
+        running_coops = self.utils.read_json("running_coops")
+        if contract_id not in running_coops.keys():
+            await ctx.send(":warning: Contract does not exist", hidden=True)
+            return
+        if coop_nb != None:
+            if coop_nb <= 0 or coop_nb > len(running_coops[contract_id]["coops"]):
+                await ctx.send(":warning: Invalid coop number", hidden=True)
+                return
+            if running_coops[contract_id]["coops"][coop_nb-1]["locked"]:
+                await ctx.send(":warning: Coop is already locked", hidden=True)
+                return
+
+        is_author_creator = False
+        for i in range(len(running_coops[contract_id]["coops"])):
+            if running_coops[contract_id]["coops"][i]["creator"] == ctx.author.id:
+                is_author_creator = True
+                creator_coop_nb = i + 1
+        
+        async def lock(coop_nb_to_lock):
+            channel = discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"])
+            coop_message = await channel.fetch_message(running_coops[contract_id]["coops"][coop_nb_to_lock-1]["message_id"])
+            action_row = [create_actionrow(create_button(style=ButtonStyle.red,
+                                                        label="LOCKED",
+                                                        custom_id=f"joincoop_{contract_id}_{coop_nb_to_lock}",
+                                                        disabled=True
+                                                        ))]
+            await coop_message.edit(embed=coop_message.embeds[0], components=action_row)
+
+            running_coops[contract_id]["coops"][coop_nb_to_lock-1]["locked"] = True
+            self.utils.save_json("running_coops", running_coops)
+        
+        if coop_nb != None:
+            if (is_author_creator and creator_coop_nb == coop_nb) or self.bot.owner_id == ctx.author.id or ctx.author.guild_permissions.administrator:
+                await lock(coop_nb)
+            else:
+                await ctx.send(f":warning: You are not the creator of **Coop {coop_nb}** of contract `{contract_id}`", hidden=True)
+                return
+        else:
+            if is_author_creator:
+                await lock(creator_coop_nb)
+            else:
+                await ctx.send(f":warning: You are not creator of any coop for contract `{contract_id}`", hidden=True)
+                return
+        
+        # Responds to the interaction
+        await ctx.send("Coop locked :white_check_mark:", hidden=True)
+    
+    @cog_ext.cog_slash(name="unlock",
+                        description="Unlocks a coop, allowing people to join again",
+                        guild_ids=GUILD_IDS,
+                        options=[
+                            create_option(
+                                name="contract_id",
+                                description="The unique ID for an EggInc contract",
+                                option_type=SlashCommandOptionType.STRING,
+                                required=True
+                            ),
+                            create_option(
+                                name="coop_nb",
+                                description="The number of the coop. If not given, looks for the contract of which you are the creator",
+                                option_type=SlashCommandOptionType.INTEGER,
+                                required=False
+                            )
+                        ])
+    @is_bot_channel()
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_slash_command())
+    async def unlock_coop(self, ctx: SlashContext, contract_id: str, coop_nb: int=None):
+
+        running_coops = self.utils.read_json("running_coops")
+        if contract_id not in running_coops.keys():
+            await ctx.send(":warning: Contract does not exist", hidden=True)
+            return
+        if coop_nb != None:
+            if coop_nb <= 0 or coop_nb > len(running_coops[contract_id]["coops"]):
+                await ctx.send(":warning: Invalid coop number", hidden=True)
+                return
+            if not running_coops[contract_id]["coops"][coop_nb-1]["locked"]:
+                await ctx.send(":warning: Coop is already unlocked", hidden=True)
+                return
+
+        is_author_creator = False
+        for i in range(len(running_coops[contract_id]["coops"])):
+            if running_coops[contract_id]["coops"][i]["creator"] == ctx.author.id:
+                is_author_creator = True
+                creator_coop_nb = i + 1
+        
+        async def unlock(coop_nb_to_unlock):
+            channel = discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"])
+            coop_message = await channel.fetch_message(running_coops[contract_id]["coops"][coop_nb_to_unlock-1]["message_id"])
+            
+            is_full = len(running_coops[contract_id]["coops"][coop_nb_to_unlock-1]["members"]) == running_coops[contract_id]["size"]
+            action_row = [create_actionrow(create_button(style=ButtonStyle.green,
+                                                        label="Join",
+                                                        custom_id=f"joincoop_{contract_id}_{coop_nb_to_unlock}",
+                                                        disabled=is_full
+                                                        ))]
+            await coop_message.edit(embed=coop_message.embeds[0], components=action_row)
+
+            running_coops[contract_id]["coops"][coop_nb_to_unlock-1]["locked"] = False
+            self.utils.save_json("running_coops", running_coops)
+        
+        if coop_nb != None:
+            if (is_author_creator and creator_coop_nb == coop_nb) or self.bot.owner_id == ctx.author.id or ctx.author.guild_permissions.administrator:
+                await unlock(coop_nb)
+            else:
+                await ctx.send(f":warning: You are not the creator of **Coop {coop_nb}** of contract `{contract_id}`", hidden=True)
+                return
+        else:
+            if is_author_creator:
+                await unlock(creator_coop_nb)
+            else:
+                await ctx.send(f":warning: You are not creator of any coop for contract `{contract_id}`", hidden=True)
+                return
+        
+        # Responds to the interaction
+        await ctx.send("Coop unlocked :white_check_mark:", hidden=True)
 
     @cog_ext.cog_slash(name="kick", guild_ids=GUILD_IDS)
     @is_bot_channel()
