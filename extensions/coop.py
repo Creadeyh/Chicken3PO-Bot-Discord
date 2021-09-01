@@ -457,11 +457,7 @@ class Coop(commands.Cog):
             for i in range(len(running_coops[id]["coops"])):
                 message = message + f"- Coop {i+1}: `{running_coops[id]['coops'][i]['code']}`\n"
 
-        if ctx.author.dm_channel == None:
-            await ctx.author.create_dm()
-        await ctx.author.dm_channel.send(message)
-
-        await ctx.send("Sent in your DMs :white_check_mark:", hidden=True)
+        await ctx.send(message, hidden=True)
 
 
     #########################
@@ -567,11 +563,9 @@ class Coop(commands.Cog):
                                                         ))]
             await ctx.edit_origin(embed=coop_embed, components=action_row)
 
-            # Sends coop code in DM
-            if ctx.author.dm_channel == None:
-                await ctx.author.create_dm()
-            await ctx.author.dm_channel.send(f"Code to join **Coop {coop_nb}** of contract **{contract_id}** is: `{coop_dic['code']}`\n" +
-                                            "Don't forget to activate your deflector and ship in bottle :wink:")
+            # Sends coop code in hidden message
+            await ctx.send(f"Code to join **Coop {coop_nb}** of contract **{contract_id}** is: `{coop_dic['code']}`\n" +
+                            "Don't forget to activate your deflector and ship in bottle :wink:", hidden=True)
         
         # Already done leggacy button
         elif ctx.custom_id.startswith("leggacy_"):
@@ -625,10 +619,11 @@ class Coop(commands.Cog):
 
     async def send_notif_no_remaining(self, guild, contract_id):
         orga_role = discord.utils.get(guild.roles, name="Coop Organizer")
-        for member in orga_role.members:
-            if member.dm_channel == None:
-                await member.create_dm()
-            await member.dm_channel.send(f"Everyone has joined a coop for the contract `{contract_id}` :tada:")
+
+        running_coops = self.utils.read_json("running_coops")
+        contract_channel = discord.utils.get(guild.channels, id=running_coops[contract_id]["channel_id"])
+        
+        await contract_channel.send(f"{orga_role.mention} Everyone has joined a coop for this contract :tada:")
 
 def setup(bot):
     bot.add_cog(Coop(bot))
