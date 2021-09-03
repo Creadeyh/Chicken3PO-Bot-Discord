@@ -293,7 +293,7 @@ class Coop(commands.Cog):
                             ),
                             create_option(
                                 name="coop_nb",
-                                description="The number of the coop. If not given, looks for the contract of which you are the creator",
+                                description="The number of the coop. If not given, looks for the coop of which you are the creator",
                                 option_type=SlashCommandOptionType.INTEGER,
                                 required=False
                             )
@@ -361,7 +361,7 @@ class Coop(commands.Cog):
                             ),
                             create_option(
                                 name="coop_nb",
-                                description="The number of the coop. If not given, looks for the contract of which you are the creator",
+                                description="The number of the coop. If not given, looks for the coop of which you are the creator",
                                 option_type=SlashCommandOptionType.INTEGER,
                                 required=False
                             )
@@ -419,12 +419,117 @@ class Coop(commands.Cog):
         # Responds to the interaction
         await ctx.send("Coop unlocked :white_check_mark:", hidden=True)
 
-    @cog_ext.cog_slash(name="kick", guild_ids=GUILD_IDS)
+    @cog_ext.cog_slash(name="kick",
+                        description="Kicks someone from a coop",
+                        guild_ids=GUILD_IDS,
+                        options=[
+                            create_option(
+                                name="member",
+                                description="The member to be kicked from the coop",
+                                option_type=SlashCommandOptionType.USER,
+                                required=True
+                            ),
+                            create_option(
+                                name="contract_id",
+                                description="The unique ID for an EggInc contract",
+                                option_type=SlashCommandOptionType.STRING,
+                                required=True
+                            ),
+                            create_option(
+                                name="coop_nb",
+                                description="The number of the coop. If not given, looks for the coop of which you are the creator",
+                                option_type=SlashCommandOptionType.INTEGER,
+                                required=False
+                            )
+                        ])
     @is_bot_channel()
-    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))# TODO, is_coop_creator())
-    async def kick_from_coop(self, ctx: SlashContext):
-        # TODO
-        print()
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_slash_command())
+    async def kick_from_coop(self, ctx: SlashContext, member: discord.Member, contract_id: str, coop_nb: int=None):
+        # TODO checks when kick yourself or last member of coop
+        running_coops = self.utils.read_json("running_coops")
+        if contract_id not in running_coops.keys():
+            await ctx.send(":warning: Contract does not exist", hidden=True)
+            return
+        if (member.id in running_coops[contract_id]["remaining"]
+            or ("already_done" in running_coops[contract_id].keys() and member.id in running_coops[contract_id]["already_done"])):
+            await ctx.send(":warning: Member is not in a coop for this contract", hidden=True)
+            return
+        if coop_nb != None:
+            if coop_nb <= 0 or coop_nb > len(running_coops[contract_id]["coops"]):
+                await ctx.send(":warning: Invalid coop number", hidden=True)
+                return
+            if member.id not in running_coops[contract_id]["coops"][coop_nb-1]["members"]:
+                await ctx.send(":warning: Member is not in this coop", hidden=True)
+                return
+
+        is_author_creator = False
+        for i in range(len(running_coops[contract_id]["coops"])):
+            if running_coops[contract_id]["coops"][i]["creator"] == ctx.author.id:
+                is_author_creator = True
+                creator_coop_nb = i + 1
+
+        async def kick(from_coop_nb):
+            # Updates running_coops JSON
+            running_coops[contract_id]["coops"][from_coop_nb-1]["members"].remove(member.id)
+            running_coops[contract_id]["remaining"].append(member.id)
+            self.utils.save_json("running_coops", running_coops)
+
+            # Updates coop message
+            coop_dic = running_coops[contract_id]["coops"][from_coop_nb-1]
+            channel = discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"])
+            coop_message = await channel.fetch_message(coop_dic["message_id"])
+            
+            coop_embed = coop_message.embeds[0]
+            coop_embed.title = f"Coop {from_coop_nb} - {len(coop_dic['members'])}/{running_coops[contract_id]['size']}"
+            desc = f"**Members:**\n- {ctx.guild.get_member(coop_dic['creator']).mention} (Creator)\n"
+            for member_id in coop_dic["members"]:
+                if member_id == coop_dic["creator"]:
+                    continue
+                desc = desc + f"- {ctx.guild.get_member(member_id).mention}\n"
+            coop_embed.description = desc
+
+            action_row = [create_actionrow(create_button(style=ButtonStyle.red if coop_dic["locked"] else ButtonStyle.green,
+                                                        label="LOCKED" if coop_dic["locked"] else "Join",
+                                                        custom_id=f"joincoop_{contract_id}_{from_coop_nb}",
+                                                        disabled=coop_dic["locked"]
+                                                        ))]
+            await coop_message.edit(embed=coop_embed, components=action_row)
+
+            # Updates contract message
+            contract_message = await channel.fetch_message(running_coops[contract_id]["message_id"])
+
+            remaining_mentions = []
+            for id in running_coops[contract_id]["remaining"]:
+                remaining_mentions.append(ctx.guild.get_member(id).mention)
+            
+            remaining_index = contract_message.content.index("**Remaining:**")
+            new_contract_content = contract_message.content[:remaining_index] + f"**Remaining:** {''.join(remaining_mentions)}\n"
+            await contract_message.edit(content=new_contract_content)
+
+            # Updates archive JSON
+            archive = self.utils.read_json("participation_archive")
+            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member.id)] = "no"
+            self.utils.save_json("participation_archive", archive)
+        
+        if coop_nb != None:
+            if (is_author_creator and creator_coop_nb == coop_nb) or self.bot.owner_id == ctx.author.id or ctx.author.guild_permissions.administrator:
+                await kick(coop_nb)
+            else:
+                await ctx.send(f":warning: You are not the creator of **Coop {coop_nb}** of contract `{contract_id}`", hidden=True)
+                return
+        else:
+            if is_author_creator:
+                if member.id in running_coops[contract_id]["coops"][creator_coop_nb-1]["members"]:
+                    await kick(creator_coop_nb)
+                else:
+                    await ctx.send(f":warning: Member is not in the coop you created (Coop {creator_coop_nb})", hidden=True)
+                    return
+            else:
+                await ctx.send(f":warning: You are not creator of any coop for contract `{contract_id}`", hidden=True)
+                return
+        
+        # Responds to the interaction
+        await ctx.send(f"{member.mention} kicked from coop", hidden=True)
     
     @cog_ext.cog_slash(name="codes",
                         description="Sends in DM the codes of currently running coops",
