@@ -638,8 +638,34 @@ class Coop(commands.Cog):
     @check_context_menu_target_coop()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_context_menu())
     async def coop_failed(self, ctx: MenuContext):
-        # TODO
-        print()
+        
+        running_coops = self.utils.read_json("running_coops")
+
+        def get_contractid_coopnb():
+            for contract_id in running_coops:
+                for i in range(len(running_coops[contract_id]["coops"])):
+                    if ctx.target_message.id == running_coops[contract_id]["coops"][i]["message_id"]:
+                        return (contract_id, i+1)
+        contract_id, coop_nb = get_contractid_coopnb()
+
+        if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
+            await ctx.send(":warning: Coop is already completed or failed", hidden=True)
+            return
+
+        # Updates running_coops JSON
+        running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"] = True
+        self.utils.save_json("running_coops", running_coops)
+
+        # Updates coop message
+        action_row = [create_actionrow(create_button(style=ButtonStyle.red,
+                                                        label="FAILED",
+                                                        custom_id=f"joincoop_{contract_id}_{coop_nb}",
+                                                        disabled=True
+                                                        ))]
+        await ctx.target_message.edit(embed=ctx.target_message.embeds[0], components=action_row)
+
+        # Responds to the interaction
+        await ctx.send(f"Marked the coop as failed :white_check_mark:", hidden=True)
 
 
     ##################
