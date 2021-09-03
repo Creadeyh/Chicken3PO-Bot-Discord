@@ -548,7 +548,7 @@ class Coop(commands.Cog):
                 return
         
         # Responds to the interaction
-        await ctx.send(f"{member.mention} kicked from coop", hidden=True)
+        await ctx.send(f"{member.mention} kicked from coop :white_check_mark:", hidden=True)
     
     @cog_ext.cog_slash(name="codes",
                         description="Sends in DM the codes of currently running coops",
@@ -630,7 +630,7 @@ class Coop(commands.Cog):
         await ctx.target_message.edit(embed=ctx.target_message.embeds[0], components=action_row)
 
         # Responds to the interaction
-        await ctx.send(f"Marked the coop as completed", hidden=True)
+        await ctx.send(f"Marked the coop as completed :white_check_mark:", hidden=True)
 
     @cog_ext.cog_context_menu(name="Coop failed",
                             guild_ids=GUILD_IDS,
