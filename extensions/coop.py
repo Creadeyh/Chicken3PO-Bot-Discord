@@ -658,17 +658,41 @@ class Coop(commands.Cog):
             await ctx.send(":warning: Coop is already completed or failed", hidden=True)
             return
 
-        # Updates running_coops JSON
+        # Updates running_coops and archive JSONs
+        archive = self.utils.read_json("participation_archive")
+
         running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"] = True
+        running_coops[contract_id]["coops"][coop_nb-1]["creator"] = ""
+
+        for member_id in running_coops[contract_id]["coops"][coop_nb-1]["members"]:
+            running_coops[contract_id]["remaining"].append(member_id)
+            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member_id)] = "no"
+        running_coops[contract_id]["coops"][coop_nb-1]["members"] = []
+
         self.utils.save_json("running_coops", running_coops)
+        self.utils.save_json("participation_archive", archive)
 
         # Updates coop message
+        coop_embed = ctx.target_message.embeds[0]
+        coop_embed.title = f"Coop {coop_nb}"
+        coop_embed.description = ""
         action_row = [create_actionrow(create_button(style=ButtonStyle.red,
                                                         label="FAILED",
                                                         custom_id=f"joincoop_{contract_id}_{coop_nb}",
                                                         disabled=True
                                                         ))]
-        await ctx.target_message.edit(embed=ctx.target_message.embeds[0], components=action_row)
+        await ctx.target_message.edit(embed=coop_embed, components=action_row)
+
+        # Updates contract message
+        contract_message = await ctx.target_message.channel.fetch_message(running_coops[contract_id]["message_id"])
+
+        remaining_mentions = []
+        for id in running_coops[contract_id]["remaining"]:
+            remaining_mentions.append(ctx.guild.get_member(id).mention)
+        
+        remaining_index = contract_message.content.index("**Remaining:**")
+        new_contract_content = contract_message.content[:remaining_index] + f"**Remaining:** {''.join(remaining_mentions)}\n"
+        await contract_message.edit(content=new_contract_content)
 
         # Responds to the interaction
         await ctx.send(f"Marked the coop as failed :white_check_mark:", hidden=True)
