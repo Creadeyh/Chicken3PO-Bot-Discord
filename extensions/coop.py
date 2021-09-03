@@ -253,6 +253,7 @@ class Coop(commands.Cog):
             "creator": ctx.author.id,
             "message_id": message.id,
             "locked": locked,
+            "completed_or_failed": False,
             "members": [ctx.author.id]
         }
         running_coops[contract_id]["coops"].append(coop_dic)
@@ -310,6 +311,9 @@ class Coop(commands.Cog):
             if coop_nb <= 0 or coop_nb > len(running_coops[contract_id]["coops"]):
                 await ctx.send(":warning: Invalid coop number", hidden=True)
                 return
+            if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
+                await ctx.send(":warning: Coop is completed or failed", hidden=True)
+                return
             if running_coops[contract_id]["coops"][coop_nb-1]["locked"]:
                 await ctx.send(":warning: Coop is already locked", hidden=True)
                 return
@@ -341,6 +345,9 @@ class Coop(commands.Cog):
                 return
         else:
             if is_author_creator:
+                if running_coops[contract_id]["coops"][creator_coop_nb-1]["completed_or_failed"]:
+                    await ctx.send(":warning: Coop is completed or failed", hidden=True)
+                    return
                 await lock(creator_coop_nb)
             else:
                 await ctx.send(f":warning: You are not creator of any coop for contract `{contract_id}`", hidden=True)
@@ -378,6 +385,9 @@ class Coop(commands.Cog):
             if coop_nb <= 0 or coop_nb > len(running_coops[contract_id]["coops"]):
                 await ctx.send(":warning: Invalid coop number", hidden=True)
                 return
+            if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
+                await ctx.send(":warning: Coop is completed or failed", hidden=True)
+                return
             if not running_coops[contract_id]["coops"][coop_nb-1]["locked"]:
                 await ctx.send(":warning: Coop is already unlocked", hidden=True)
                 return
@@ -411,6 +421,9 @@ class Coop(commands.Cog):
                 return
         else:
             if is_author_creator:
+                if running_coops[contract_id]["coops"][creator_coop_nb-1]["completed_or_failed"]:
+                    await ctx.send(":warning: Coop is completed or failed", hidden=True)
+                    return
                 await unlock(creator_coop_nb)
             else:
                 await ctx.send(f":warning: You are not creator of any coop for contract `{contract_id}`", hidden=True)
@@ -457,6 +470,9 @@ class Coop(commands.Cog):
         if coop_nb != None:
             if coop_nb <= 0 or coop_nb > len(running_coops[contract_id]["coops"]):
                 await ctx.send(":warning: Invalid coop number", hidden=True)
+                return
+            if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
+                await ctx.send(":warning: Coop is completed or failed", hidden=True)
                 return
             if member.id not in running_coops[contract_id]["coops"][coop_nb-1]["members"]:
                 await ctx.send(":warning: Member is not in this coop", hidden=True)
@@ -519,6 +535,9 @@ class Coop(commands.Cog):
                 return
         else:
             if is_author_creator:
+                if running_coops[contract_id]["coops"][creator_coop_nb-1]["completed_or_failed"]:
+                    await ctx.send(":warning: Coop is completed or failed", hidden=True)
+                    return
                 if member.id in running_coops[contract_id]["coops"][creator_coop_nb-1]["members"]:
                     await kick(creator_coop_nb)
                 else:
@@ -583,9 +602,35 @@ class Coop(commands.Cog):
                             target=ContextMenuType.MESSAGE)
     @check_context_menu_target_coop()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_context_menu())
-        # TODO
-        print()
     async def coop_completed(self, ctx: MenuContext):
+        
+        running_coops = self.utils.read_json("running_coops")
+
+        def get_contractid_coopnb():
+            for contract_id in running_coops:
+                for i in range(len(running_coops[contract_id]["coops"])):
+                    if ctx.target_message.id == running_coops[contract_id]["coops"][i]["message_id"]:
+                        return (contract_id, i+1)
+        contract_id, coop_nb = get_contractid_coopnb()
+
+        if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
+            await ctx.send(":warning: Coop is already completed or failed", hidden=True)
+            return
+
+        # Updates running_coops JSON
+        running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"] = True
+        self.utils.save_json("running_coops", running_coops)
+
+        # Updates coop message
+        action_row = [create_actionrow(create_button(style=ButtonStyle.blurple,
+                                                        label="COMPLETED",
+                                                        custom_id=f"joincoop_{contract_id}_{coop_nb}",
+                                                        disabled=True
+                                                        ))]
+        await ctx.target_message.edit(embed=ctx.target_message.embeds[0], components=action_row)
+
+        # Responds to the interaction
+        await ctx.send(f"Marked the coop as completed", hidden=True)
 
     @cog_ext.cog_context_menu(name="Coop failed",
                             guild_ids=GUILD_IDS,
