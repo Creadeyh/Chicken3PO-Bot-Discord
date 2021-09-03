@@ -58,7 +58,7 @@ class Coop(commands.Cog):
     def check_context_menu_target_contract():
         def predicate(ctx):
             running_coops = ctx.bot.get_cog("Utils").read_json("running_coops")
-            for contract in running_coops:
+            for contract in running_coops.values():
                 if ctx.target_message.id == contract["message_id"]:
                     return True
             return False
@@ -67,7 +67,7 @@ class Coop(commands.Cog):
     def check_context_menu_target_coop():
         def predicate(ctx):
             running_coops = ctx.bot.get_cog("Utils").read_json("running_coops")
-            for contract in running_coops:
+            for contract in running_coops.values():
                 for coop in contract["coops"]:
                     if ctx.target_message.id == coop["message_id"]:
                         return True
@@ -574,7 +574,7 @@ class Coop(commands.Cog):
                             target=ContextMenuType.MESSAGE)
     @check_context_menu_target_contract()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
-    async def remove_contract(ctx: MenuContext):
+    async def remove_contract(self, ctx: MenuContext):
         # TODO
         print()
     
@@ -583,16 +583,16 @@ class Coop(commands.Cog):
                             target=ContextMenuType.MESSAGE)
     @check_context_menu_target_coop()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_context_menu())
-    async def coop_completed(ctx: MenuContext):
         # TODO
         print()
+    async def coop_completed(self, ctx: MenuContext):
 
     @cog_ext.cog_context_menu(name="Coop failed",
                             guild_ids=GUILD_IDS,
                             target=ContextMenuType.MESSAGE)
     @check_context_menu_target_coop()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_context_menu())
-    async def coop_failed(ctx: MenuContext):
+    async def coop_failed(self, ctx: MenuContext):
         # TODO
         print()
 
