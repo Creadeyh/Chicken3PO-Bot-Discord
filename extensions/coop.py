@@ -613,6 +613,9 @@ class Coop(commands.Cog):
                         return (contract_id, i+1)
         contract_id, coop_nb = get_contractid_coopnb()
 
+        if self.bot.owner_id != ctx.author.id and not ctx.author.guild_permissions.administrator and running_coops[contract_id]["coops"][coop_nb-1]["creator"] != ctx.author.id:
+            await ctx.send(":warning: You are not the creator of this coop", hidden=True)
+            return
         if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
             await ctx.send(":warning: Coop is already completed or failed", hidden=True)
             return
@@ -648,6 +651,9 @@ class Coop(commands.Cog):
                         return (contract_id, i+1)
         contract_id, coop_nb = get_contractid_coopnb()
 
+        if self.bot.owner_id != ctx.author.id and not ctx.author.guild_permissions.administrator and running_coops[contract_id]["coops"][coop_nb-1]["creator"] != ctx.author.id:
+            await ctx.send(":warning: You are not the creator of this coop", hidden=True)
+            return
         if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
             await ctx.send(":warning: Coop is already completed or failed", hidden=True)
             return
