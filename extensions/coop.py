@@ -594,8 +594,26 @@ class Coop(commands.Cog):
     @check_context_menu_target_contract()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
     async def remove_contract(self, ctx: MenuContext):
-        # TODO
-        print()
+        
+        running_coops = self.utils.read_json("running_coops")
+
+        for id in running_coops:
+            if ctx.target_message.id == running_coops[id]["message_id"]:
+                contract_id = id
+        
+        for coop in running_coops[contract_id]["coops"]:
+            if not coop["completed_or_failed"]:
+                await ctx.send(":warning: Some coops are still running", hidden=True)
+                return
+
+        # Deletes contract channel and category
+        contract_channel = discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"])
+        await contract_channel.category.delete()
+        await contract_channel.delete()
+        
+        # Updates running_coops JSON
+        running_coops.pop(contract_id)
+        self.utils.save_json("running_coops", running_coops)
     
     @cog_ext.cog_context_menu(name="Coop completed",
                             guild_ids=GUILD_IDS,
