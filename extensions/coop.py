@@ -630,6 +630,34 @@ class Coop(commands.Cog):
         # Updates running_coops JSON
         running_coops.pop(contract_id)
         self.utils.save_json("running_coops", running_coops)
+
+        # Checks for new AFK
+        archive = self.utils.read_json("participation_archive")
+        date_dic = {}
+        for coops in archive.values():
+            for date, coop in coops.items():
+                if date not in date_dic.keys():
+                    date_dic[date] = []
+                date_dic[date].append(coop)
+        # Sorts by date
+        date_dic = dict(sorted(date_dic.items(), reverse=True))
+        # If members has not participated in last 3 coops (excluding already done leggacies), gives him AFK role
+        for member in ctx.guild.members:
+            count = 0
+            no_count = 0
+            i = 0
+            while count < 3 and i < len(date_dic):
+                key = list(date_dic.keys())[i]
+                for coop in date_dic[key]:
+                    if str(member.id) not in coop["participation"].keys():
+                        continue
+                    if coop["participation"][str(member.id)] in ["no", "afk"]:
+                        no_count = no_count + 1
+                    if coop["participation"][str(member.id)] != "leggacy":
+                        count = count + 1
+                i = i + 1
+            if no_count >= 3:
+                await member.add_roles(discord.utils.get(ctx.guild.roles, name="AFK"))    
     
     @cog_ext.cog_context_menu(name="Coop completed",
                             guild_ids=GUILD_IDS,
