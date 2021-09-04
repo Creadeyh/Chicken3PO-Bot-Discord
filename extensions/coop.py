@@ -131,6 +131,8 @@ class Coop(commands.Cog):
         
         # Gets people without the AFK role and who haven't done the contract already (according to bot archive)
         def member_in_previous_coop(member_id):
+            if contract_id not in archive.keys():
+                return False
             for contract in archive[contract_id].values():
                 if str(member_id) in contract["participation"].keys() and contract["participation"][str(member_id)] in ["yes", "leggacy"]:
                     return True
