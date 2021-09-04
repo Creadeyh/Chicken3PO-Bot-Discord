@@ -32,6 +32,12 @@ class Coop(commands.Cog):
             return ctx.channel.id == ctx.bot.get_cog("Utils").get_bot_channel_id(ctx.guild.id)
         return commands.check(predicate)
 
+    def is_not_afk():
+        def predicate(ctx):
+            afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
+            return afk_role not in ctx.author.roles
+        return commands.check(predicate)
+
     def is_coop_creator_slash_command():
         """
         Checks if command author is creator of at least one of the running coops
@@ -141,10 +147,13 @@ class Coop(commands.Cog):
         afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
         remaining = []
         already_done = []
+        afk = []
         for member in ctx.guild.members:
-            if not member.bot and afk_role not in member.roles:
+            if not member.bot:
                 if is_leggacy and member_in_previous_coop(member.id):
                     already_done.append(member)
+                elif afk_role in member.roles:
+                    afk.append(member)
                 else:
                     remaining.append(member)
         
@@ -175,7 +184,7 @@ class Coop(commands.Cog):
             "remaining": [member.id for member in remaining]
         }
         if is_leggacy:
-            dic_contract["already_done"] = []
+            dic_contract["already_done"] = [member.id for member in already_done]
         
         running_coops[contract_id] = dic_contract
         self.utils.save_json("running_coops", running_coops)
@@ -187,6 +196,10 @@ class Coop(commands.Cog):
         participation = {}
         for member in remaining:
             participation[str(member.id)] = "no"
+        for member in already_done:
+            participation[str(member.id)] = "leggacy"
+        for member in afk:
+            participation[str(member.id)] = "afk"
         
         archive[contract_id][contract_date] = {
             "is_leggacy": is_leggacy,
@@ -221,6 +234,7 @@ class Coop(commands.Cog):
                             )
                         ])
     @is_bot_channel()
+    @is_not_afk()
     async def add_coop(self, ctx: SlashContext, contract_id: str, coop_code: str, locked: bool=False):
         
         running_coops = self.utils.read_json("running_coops")
@@ -741,8 +755,14 @@ class Coop(commands.Cog):
                     await ctx.send("You have already joined a coop for this contract :smile:", hidden=True)
                     return
             
+            # If AFK and joins a coop, removes AFK role
+            afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
+            if member.id not in running_coops[contract_id]["remaining"]:
+                if afk_role in member.roles:
+                    await member.remove_roles(afk_role)
             # Updates running_coops JSON
-            running_coops[contract_id]["remaining"].remove(member.id)
+            else:
+                running_coops[contract_id]["remaining"].remove(member.id)
             running_coops[contract_id]["coops"][coop_nb-1]["members"].append(member.id)
             utils.save_json("running_coops", running_coops)
 
