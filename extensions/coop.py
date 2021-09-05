@@ -85,7 +85,7 @@ class Coop(commands.Cog):
     ##########################
     
     @cog_ext.cog_slash(name="contract",
-                        description="Registers a new contract",
+                        description="Registers a new contract and creates a channel and category for it",
                         guild_ids=GUILD_IDS,
                         options=[
                             create_option(
@@ -102,7 +102,7 @@ class Coop(commands.Cog):
                             ),
                             create_option(
                                 name="is_leggacy",
-                                description="If the contract is a leggacy or not",
+                                description="Whether the contract is leggacy or not",
                                 option_type=SlashCommandOptionType.BOOLEAN,
                                 required=True
                             )
@@ -211,7 +211,7 @@ class Coop(commands.Cog):
         await ctx.send("Contract registered :white_check_mark:", hidden=True)
     
     @cog_ext.cog_slash(name="coop",
-                        description="Registers a new coop",
+                        description="Registers a new coop and displays it in the contract channel",
                         guild_ids=GUILD_IDS,
                         options=[
                             create_option(
@@ -567,12 +567,12 @@ class Coop(commands.Cog):
         await ctx.send(f"{member.mention} kicked from coop :white_check_mark:", hidden=True)
     
     @cog_ext.cog_slash(name="codes",
-                        description="Sends in DM the codes of currently running coops",
+                        description="Sends the codes of currently running coops",
                         guild_ids=GUILD_IDS,
                         options=[
                             create_option(
                                 name="contract_id",
-                                description="The contract for which you want the coop codes. If not given, sends for all contracts",
+                                description="The contract for which you want the coop codes. If not given, sends for all running contracts",
                                 option_type=SlashCommandOptionType.STRING,
                                 required=False
                             )
@@ -598,6 +598,66 @@ class Coop(commands.Cog):
                 message = message + f"- Coop {i+1}: `{running_coops[id]['coops'][i]['code']}`\n"
 
         await ctx.send(message, hidden=True)
+
+    @cog_ext.cog_slash(guild_ids=GUILD_IDS)
+    async def help(self, ctx):
+    
+        await ctx.send("__**Chicken3PO Commands**__\n\n", hidden=True)
+
+        await ctx.send("`&setuphere`\n" +
+                        "- Admins only\n" +
+                        "- Defines the channel as reserved for bot commands\n\n" +
+
+                        "`/contract [contract-id] [size] [is-leggacy]`\n" +
+                        "- Admins only\n" +
+                        "- Registers a new contract and creates a channel and category for it\n" +
+                        "- *contract-id* = The unique ID for an EggInc contract\n" +
+                        "- *size* = Number of slots available in the contract\n" +
+                        "- *is-leggacy* = Whether the contract is leggacy or not\n\n" +
+
+                        "`/coop [contract-id] [coop-code] [locked]`\n" +
+                        "- Registers a new coop and displays it in the contract channel\n" +
+                        "- *contract-id* = The unique ID for an EggInc contract\n" +
+                        "- *coop-code* = The code to join the coop\n" +
+                        "- *locked* = Whether or not the coop is locked at creation. Prevents people from joining\n\n" +
+
+                        "`/lock [contract-id] [coop-nb]`\n" +
+                        "- Admins and coop creator only\n" +
+                        "- Locks a coop, preventing people from joining\n" +
+                        "- *contract-id* = The unique ID for an EggInc contract\n" +
+                        "- *coop-nb* = The number of the coop. If not given, looks for the coop of which you are the creator\n\n" +
+
+                        "`/unlock [contract-id] [coop-nb]`\n" +
+                        "- Admins and coop creator only\n" +
+                        "- Unlocks a coop, allowing people to join again\n" +
+                        "- *contract-id* = The unique ID for an EggInc contract\n" +
+                        "- *coop-nb* = The number of the coop. If not given, looks for the coop of which you are the creator\n\n",
+                        hidden=True)
+
+        await ctx.send("`/kick [member] [contract-id] [coop-nb]`\n" +
+                        "- Admins and coop creator only\n" +
+                        "- Kicks someone from a coop\n" +
+                        "- *member* = The member to be kicked from the coop\n" +
+                        "- *contract-id* = The unique ID for an EggInc contract\n" +
+                        "- *coop-nb* = The number of the coop. If not given, looks for the coop of which you are the creator\n\n" +
+
+                        "`/codes [contract-id]`\n" +
+                        "- Admins only\n" +
+                        "- Sends the codes of currently running coops\n" +
+                        "- *contract-id* = The contract for which you want the coop codes. If not given, sends for all running contracts\n\n" +
+
+                        "*Right click on coop message -> Applications -> `Coop completed`*\n" +
+                        "- Admins and coop creator only\n" +
+                        "- Marks the coop as completed\n\n" +
+
+                        "*Right click on coop message -> Applications -> `Coop failed`*\n" +
+                        "- Admins and coop creator only\n" +
+                        "- Marks the coop as failed. Returns members to the remaining list\n\n" +
+
+                        "*Right click on contract message -> Applications -> `Remove contract`*\n" +
+                        "- Admins only\n" +
+                        "- If all coops are completed/failed, deletes the contract channel and category",
+                        hidden=True)
 
 
     #########################

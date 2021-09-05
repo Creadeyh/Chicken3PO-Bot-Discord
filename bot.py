@@ -33,7 +33,6 @@ utils = bot.get_cog("Utils")
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=discord.Game("Egg Inc with Wall-Egg | &help"))
-    # await bot.change_presence(activity=discord.Game("DON'T USE I'M TESTING"))
     print("Bot is ready")
 
 async def reload_extensions():
@@ -129,11 +128,6 @@ async def on_slash_command_error(ctx, error):
 
 #########################
 ##### Base Commands #####
-
-@bot.command()
-@commands.is_owner()
-async def test(ctx):
-    print()
 #########################
 
 @bot.command()
@@ -151,18 +145,6 @@ async def setuphere(ctx):
     await ctx.send(f"Bot commands channel set as {ctx.channel.mention}")
 
 bot.remove_command("help")
-
-@bot.command()
-async def help(ctx):
-    dm_channel = ctx.author.dm_channel
-    if dm_channel == None:
-        await ctx.author.create_dm()
-        dm_channel = ctx.author.dm_channel
-
-    await ctx.send("Sending you help in your DMs :ambulance:")
-
-    # TODO
-    await dm_channel.send("bilbius bad")
 
 
 bot.run(TOKEN)
