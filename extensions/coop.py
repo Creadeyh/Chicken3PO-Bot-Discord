@@ -599,6 +599,75 @@ class Coop(commands.Cog):
 
         await ctx.send(message, hidden=True)
 
+    @cog_ext.cog_slash(name="register-alt",
+                        description="Registers an alt EggInc account for the Discord account",
+                        guild_ids=GUILD_IDS,
+                        options=[
+                            create_option(
+                                name="member",
+                                description="The Discord account",
+                                option_type=SlashCommandOptionType.USER,
+                                required=True
+                            ),
+                            create_option(
+                                name="name_main",
+                                description="The EggInc name of the main account",
+                                option_type=SlashCommandOptionType.STRING,
+                                required=True
+                            ),
+                            create_option(
+                                name="name_alt",
+                                description="The EggInc name of the alt account",
+                                option_type=SlashCommandOptionType.STRING,
+                                required=True
+                            )
+                        ])
+    @is_bot_channel()
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
+    async def register_alt_account(self, ctx: SlashContext, member: discord.Member, name_main: str, name_alt: str):
+        
+        alt_role = discord.utils.get(ctx.guild.roles, name="Alt")
+        if alt_role in member.roles:
+            await ctx.send(":warning: This user already has an alt account", hidden=True)
+            return
+
+        alt_dic = self.utils.read_json("alt_index")
+        alt_dic[str(member.id)] = {
+            "main": name_main,
+            "alt": name_alt
+        }
+        self.utils.save_json("alt_index", alt_dic)
+        await member.add_roles(alt_role)
+
+        await ctx.send("Alt account registered :white_check_mark:", hidden=True)
+
+    @cog_ext.cog_slash(name="unregister-alt",
+                        description="Unregisters the alt EggInc account for the Discord account",
+                        guild_ids=GUILD_IDS,
+                        options=[
+                            create_option(
+                                name="member",
+                                description="The Discord account",
+                                option_type=SlashCommandOptionType.USER,
+                                required=True
+                            )
+                        ])
+    @is_bot_channel()
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
+    async def unregister_alt_account(self, ctx: SlashContext, member: discord.Member):
+
+        alt_role = discord.utils.get(ctx.guild.roles, name="Alt")
+        if alt_role not in member.roles:
+            await ctx.send(":warning: This user has no alt account", hidden=True)
+            return
+
+        alt_dic = self.utils.read_json("alt_index")
+        alt_dic.pop(str(member.id))
+        self.utils.save_json("alt_index", alt_dic)
+        await member.remove_roles(alt_role)
+
+        await ctx.send("Alt account unregistered :white_check_mark:", hidden=True)
+    
     @cog_ext.cog_slash(guild_ids=GUILD_IDS)
     async def help(self, ctx):
     
@@ -645,6 +714,18 @@ class Coop(commands.Cog):
                         "- Admins only\n" +
                         "- Sends the codes of currently running coops\n" +
                         "- *contract-id* = The contract for which you want the coop codes. If not given, sends for all running contracts\n\n" +
+
+                        "`/register-alt [member] [name_main] [name_alt]`\n" +
+                        "- Admins only\n" +
+                        "- Registers an alt EggInc account for the Discord account\n" +
+                        "- *member* = The Discord account\n" +
+                        "- *name-main* = The EggInc name of the main account\n" +
+                        "- *name-alt* = The EggInc name of the alt account\n\n" +
+
+                        "`/unregister-alt [member]`\n" +
+                        "- Admins only\n" +
+                        "- Unregisters the alt EggInc account for the Discord account\n" +
+                        "- *member* = The Discord account\n\n" +
 
                         "*Right click on coop message -> Applications -> `Coop completed`*\n" +
                         "- Admins and coop creator only\n" +
