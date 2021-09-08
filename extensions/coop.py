@@ -544,7 +544,13 @@ class Coop(commands.Cog):
             self.utils.save_json("participation_archive", archive)
         
         if coop_nb != None:
+            if is_author_creator and creator_coop_nb == coop_nb and member == ctx.author:
+                await ctx.send(":warning: You can't kick yourself as a coop creator", hidden=True)
+                return
             if (is_author_creator and creator_coop_nb == coop_nb) or self.bot.owner_id == ctx.author.id or ctx.author.guild_permissions.administrator:
+                if member.id == running_coops[contract_id]["coops"][coop_nb-1]["creator"]:
+                    await ctx.send(":warning: You can't kick the coop creator", hidden=True)
+                    return
                 await kick(coop_nb)
             else:
                 await ctx.send(f":warning: You are not the creator of **Coop {coop_nb}** of contract `{contract_id}`", hidden=True)
@@ -553,6 +559,9 @@ class Coop(commands.Cog):
             if is_author_creator:
                 if running_coops[contract_id]["coops"][creator_coop_nb-1]["completed_or_failed"]:
                     await ctx.send(":warning: Coop is completed or failed", hidden=True)
+                    return
+                if member == ctx.author:
+                    await ctx.send(":warning: You can't kick yourself as a coop creator", hidden=True)
                     return
                 if member.id in running_coops[contract_id]["coops"][creator_coop_nb-1]["members"]:
                     await kick(creator_coop_nb)
