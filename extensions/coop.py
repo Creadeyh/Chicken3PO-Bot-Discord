@@ -145,17 +145,23 @@ class Coop(commands.Cog):
             return False
         
         afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
-        remaining = []
-        already_done = []
-        afk = []
+        alt_role = discord.utils.get(ctx.guild.roles, name="Alt")
+        remaining_ids = []
+        already_done_ids = []
+        afk_ids = []
         for member in ctx.guild.members:
             if not member.bot:
-                if is_leggacy and member_in_previous_coop(member.id):
-                    already_done.append(member)
-                elif afk_role in member.roles:
-                    afk.append(member)
+                if alt_role in member.roles:
+                    ids = [member.id, "alt" + str(member.id)]
                 else:
-                    remaining.append(member)
+                    ids = [member.id]
+                for id in ids:
+                    if is_leggacy and member_in_previous_coop(id):
+                        already_done_ids.append(id)
+                    elif afk_role in member.roles:
+                        afk_ids.append(id)
+                    else:
+                        remaining_ids.append(id)
         
         # Sends the contract message
         contract_string = ("==============================\n"
@@ -163,8 +169,8 @@ class Coop(commands.Cog):
                         + f"*Contract ID:* `{contract_id}`\n"
                         + f"*Coop size:* {size}\n"
                         + "==============================\n\n"
-                        + (f"**Already done:** {''.join([member.mention for member in already_done])}\n\n" if is_leggacy else "")
-                        + f"**Remaining: ({len(remaining)})** {''.join([member.mention for member in remaining])}\n"
+                        + (f"**Already done:** {''.join([self.utils.get_member_mention(id, ctx.guild) for id in already_done_ids])}\n\n" if is_leggacy else "")
+                        + f"**Remaining: ({len(remaining_ids)})** {''.join([self.utils.get_member_mention(id, ctx.guild) for id in remaining_ids])}\n "
                         )
         if is_leggacy:
             action_row = [create_actionrow(create_button(style=ButtonStyle.blurple, label="I've already done this contract", custom_id=f"leggacy_{contract_id}"))]
@@ -181,10 +187,10 @@ class Coop(commands.Cog):
             "channel_id": channel.id,
             "message_id": message.id,
             "coops": [],
-            "remaining": [member.id for member in remaining]
+            "remaining": remaining_ids
         }
         if is_leggacy:
-            dic_contract["already_done"] = [member.id for member in already_done]
+            dic_contract["already_done"] = already_done_ids
         
         running_coops[contract_id] = dic_contract
         self.utils.save_json("running_coops", running_coops)
@@ -194,12 +200,12 @@ class Coop(commands.Cog):
             archive[contract_id] = {}
         
         participation = {}
-        for member in remaining:
-            participation[str(member.id)] = "no"
-        for member in already_done:
-            participation[str(member.id)] = "leggacy"
-        for member in afk:
-            participation[str(member.id)] = "afk"
+        for id in remaining_ids:
+            participation[str(id)] = "no"
+        for id in already_done_ids:
+            participation[str(id)] = "leggacy"
+        for id in afk_ids:
+            participation[str(id)] = "afk"
         
         archive[contract_id][contract_date] = {
             "is_leggacy": is_leggacy,
@@ -288,7 +294,7 @@ class Coop(commands.Cog):
         # Updates contract message
         remaining_mentions = []
         for id in running_coops[contract_id]["remaining"]:
-            remaining_mentions.append(ctx.guild.get_member(id).mention)
+            remaining_mentions.append(self.utils.get_member_mention(id, ctx.guild))
         
         contract_message = await contract_channel.fetch_message(running_coops[contract_id]["message_id"])
         remaining_index = contract_message.content.index("**Remaining:")
@@ -474,23 +480,50 @@ class Coop(commands.Cog):
     @is_bot_channel()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_slash_command())
     async def kick_from_coop(self, ctx: SlashContext, member: discord.Member, contract_id: str, coop_nb: int=None):
+
         running_coops = self.utils.read_json("running_coops")
         if contract_id not in running_coops.keys():
             await ctx.send(":warning: Contract does not exist", hidden=True)
             return
-        if (member.id in running_coops[contract_id]["remaining"]
-            or ("already_done" in running_coops[contract_id].keys() and member.id in running_coops[contract_id]["already_done"])):
-            await ctx.send(":warning: Member is not in a coop for this contract", hidden=True)
+
+        member_id = member.id
+
+        # Check for alt
+        alt_dic = self.utils.read_json("alt_index")
+        alt_role = discord.utils.get(ctx.guild.roles, name="Alt")
+        if alt_role in member.roles:
+            action_row = create_actionrow(
+                                            create_button(style=ButtonStyle.grey,
+                                                label=f"{alt_dic[str(member.id)]['main']}",
+                                                custom_id="main"
+                                            ),
+                                            create_button(style=ButtonStyle.grey,
+                                                label=f"{alt_dic[str(member.id)]['alt']}",
+                                                custom_id="alt"
+                                            )
+                                        )
+            await ctx.send("Which account do you want to kick ?", components=[action_row], hidden=True)
+
+            ctx_alt: ComponentContext = await wait_for_component(self.bot, components=action_row)
+            if ctx_alt.custom_id == "alt":
+                member_id = "alt" + str(member.id)
+            ctx_send = ctx_alt
+        else:
+            ctx_send = ctx
+        
+        if (member_id in running_coops[contract_id]["remaining"]
+            or ("already_done" in running_coops[contract_id].keys() and member_id in running_coops[contract_id]["already_done"])):
+            await ctx_send.send(":warning: Member is not in a coop for this contract", hidden=True)
             return
         if coop_nb != None:
             if coop_nb <= 0 or coop_nb > len(running_coops[contract_id]["coops"]):
-                await ctx.send(":warning: Invalid coop number", hidden=True)
+                await ctx_send.send(":warning: Invalid coop number", hidden=True)
                 return
             if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
-                await ctx.send(":warning: Coop is completed or failed", hidden=True)
+                await ctx_send.send(":warning: Coop is completed or failed", hidden=True)
                 return
-            if member.id not in running_coops[contract_id]["coops"][coop_nb-1]["members"]:
-                await ctx.send(":warning: Member is not in this coop", hidden=True)
+            if member_id not in running_coops[contract_id]["coops"][coop_nb-1]["members"]:
+                await ctx_send.send(":warning: Member is not in this coop", hidden=True)
                 return
 
         is_author_creator = False
@@ -501,8 +534,8 @@ class Coop(commands.Cog):
 
         async def kick(from_coop_nb):
             # Updates running_coops JSON
-            running_coops[contract_id]["coops"][from_coop_nb-1]["members"].remove(member.id)
-            running_coops[contract_id]["remaining"].append(member.id)
+            running_coops[contract_id]["coops"][from_coop_nb-1]["members"].remove(member_id)
+            running_coops[contract_id]["remaining"].append(member_id)
             self.utils.save_json("running_coops", running_coops)
 
             # Updates coop message
@@ -513,10 +546,10 @@ class Coop(commands.Cog):
             coop_embed = coop_message.embeds[0]
             coop_embed.title = f"Coop {from_coop_nb} - {len(coop_dic['members'])}/{running_coops[contract_id]['size']}"
             desc = f"**Members:**\n- {ctx.guild.get_member(coop_dic['creator']).mention} (Creator)\n"
-            for member_id in coop_dic["members"]:
-                if member_id == coop_dic["creator"]:
+            for id in coop_dic["members"]:
+                if id == coop_dic["creator"]:
                     continue
-                desc = desc + f"- {ctx.guild.get_member(member_id).mention}\n"
+                desc = desc + f"- {self.utils.get_member_mention(id, ctx.guild)}\n"
             coop_embed.description = desc
 
             action_row = [create_actionrow(create_button(style=ButtonStyle.red if coop_dic["locked"] else ButtonStyle.green,
@@ -531,7 +564,7 @@ class Coop(commands.Cog):
 
             remaining_mentions = []
             for id in running_coops[contract_id]["remaining"]:
-                remaining_mentions.append(ctx.guild.get_member(id).mention)
+                remaining_mentions.append(self.utils.get_member_mention(id, ctx.guild))
             
             remaining_index = contract_message.content.index("**Remaining:")
             new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
@@ -539,40 +572,40 @@ class Coop(commands.Cog):
 
             # Updates archive JSON
             archive = self.utils.read_json("participation_archive")
-            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member.id)] = "no"
+            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member_id)] = "no"
             self.utils.save_json("participation_archive", archive)
         
         if coop_nb != None:
             if is_author_creator and creator_coop_nb == coop_nb and member == ctx.author:
-                await ctx.send(":warning: You can't kick yourself as a coop creator", hidden=True)
+                await ctx_send.send(":warning: You can't kick yourself as a coop creator", hidden=True)
                 return
             if (is_author_creator and creator_coop_nb == coop_nb) or self.bot.owner_id == ctx.author.id or ctx.author.guild_permissions.administrator:
-                if member.id == running_coops[contract_id]["coops"][coop_nb-1]["creator"]:
-                    await ctx.send(":warning: You can't kick the coop creator", hidden=True)
+                if member_id == running_coops[contract_id]["coops"][coop_nb-1]["creator"]:
+                    await ctx_send.send(":warning: You can't kick the coop creator", hidden=True)
                     return
                 await kick(coop_nb)
             else:
-                await ctx.send(f":warning: You are not the creator of **Coop {coop_nb}** of contract `{contract_id}`", hidden=True)
+                await ctx_send.send(f":warning: You are not the creator of **Coop {coop_nb}** of contract `{contract_id}`", hidden=True)
                 return
         else:
             if is_author_creator:
                 if running_coops[contract_id]["coops"][creator_coop_nb-1]["completed_or_failed"]:
-                    await ctx.send(":warning: Coop is completed or failed", hidden=True)
+                    await ctx_send.send(":warning: Coop is completed or failed", hidden=True)
                     return
                 if member == ctx.author:
-                    await ctx.send(":warning: You can't kick yourself as a coop creator", hidden=True)
+                    await ctx_send.send(":warning: You can't kick yourself as a coop creator", hidden=True)
                     return
-                if member.id in running_coops[contract_id]["coops"][creator_coop_nb-1]["members"]:
+                if member_id in running_coops[contract_id]["coops"][creator_coop_nb-1]["members"]:
                     await kick(creator_coop_nb)
                 else:
-                    await ctx.send(f":warning: Member is not in the coop you created (Coop {creator_coop_nb})", hidden=True)
+                    await ctx_send.send(f":warning: Member is not in the coop you created (Coop {creator_coop_nb})", hidden=True)
                     return
             else:
-                await ctx.send(f":warning: You are not creator of any coop for contract `{contract_id}`", hidden=True)
+                await ctx_send.send(f":warning: You are not creator of any coop for contract `{contract_id}`", hidden=True)
                 return
         
         # Responds to the interaction
-        await ctx.send(f"{member.mention} kicked from coop :white_check_mark:", hidden=True)
+        await ctx_send.send(f"{member.mention} kicked from coop :white_check_mark:", hidden=True)
     
     @cog_ext.cog_slash(name="codes",
                         description="Sends the codes of currently running coops",
@@ -791,6 +824,7 @@ class Coop(commands.Cog):
         # Sorts by date
         date_dic = dict(sorted(date_dic.items(), reverse=True))
         # If members has not participated in last 3 coops (excluding already done leggacies), gives him AFK role
+        # Alt accounts are not taken into account
         for member in ctx.guild.members:
             count = 0
             no_count = 0
@@ -899,7 +933,7 @@ class Coop(commands.Cog):
 
         remaining_mentions = []
         for id in running_coops[contract_id]["remaining"]:
-            remaining_mentions.append(ctx.guild.get_member(id).mention)
+            remaining_mentions.append(self.utils.get_member_mention(id, ctx.guild))
         
         remaining_index = contract_message.content.index("**Remaining:")
         new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
@@ -922,25 +956,52 @@ class Coop(commands.Cog):
             contract_id = ctx.custom_id.split('_')[1]
             coop_nb = int(ctx.custom_id.split('_')[2])
 
+            author_id = ctx.author.id
+            is_alt = False
+
+            # Check for alt
+            alt_dic = utils.read_json("alt_index")
+            alt_role = discord.utils.get(ctx.guild.roles, name="Alt")
+            if alt_role in ctx.author.roles:
+                action_row = create_actionrow(
+                                                create_button(style=ButtonStyle.grey,
+                                                    label=f"{alt_dic[str(ctx.author.id)]['main']}",
+                                                    custom_id="main"
+                                                ),
+                                                create_button(style=ButtonStyle.grey,
+                                                    label=f"{alt_dic[str(ctx.author.id)]['alt']}",
+                                                    custom_id="alt"
+                                                )
+                                            )
+                await ctx.send("Which account is joining ?", components=[action_row], hidden=True)
+
+                ctx_alt: ComponentContext = await wait_for_component(self.bot, components=action_row)
+                if ctx_alt.custom_id == "alt":
+                    author_id = "alt" + str(ctx.author.id)
+                    is_alt = True
+                ctx_send = ctx_alt
+            else:
+                ctx_send = ctx
+
+            # General checks
             running_coops = utils.read_json("running_coops")
-            member = ctx.author
-            if "already_done" in running_coops[contract_id].keys() and member.id in running_coops[contract_id]["already_done"]:
-                await ctx.send("You have already completed this contract :smile:", hidden=True)
+            if "already_done" in running_coops[contract_id].keys() and author_id in running_coops[contract_id]["already_done"]:
+                await ctx_send.send("You have already completed this contract :smile:", hidden=True)
                 return
             for coop in running_coops[contract_id]["coops"]:
-                if member.id in coop["members"]:
-                    await ctx.send("You have already joined a coop for this contract :smile:", hidden=True)
+                if author_id in coop["members"]:
+                    await ctx_send.send("You have already joined a coop for this contract :smile:", hidden=True)
                     return
             
             # If AFK and joins a coop, removes AFK role
-            afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
-            if member.id not in running_coops[contract_id]["remaining"]:
-                if afk_role in member.roles:
-                    await member.remove_roles(afk_role)
+            if author_id not in running_coops[contract_id]["remaining"]:
+                afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
+                if not is_alt and afk_role in ctx.author.roles: # Alt doesn't count for AFK
+                    await ctx.author.remove_roles(afk_role)
             # Updates running_coops JSON
             else:
-                running_coops[contract_id]["remaining"].remove(member.id)
-            running_coops[contract_id]["coops"][coop_nb-1]["members"].append(member.id)
+                running_coops[contract_id]["remaining"].remove(author_id)
+            running_coops[contract_id]["coops"][coop_nb-1]["members"].append(author_id)
             utils.save_json("running_coops", running_coops)
 
             # Notif to coop organizers
@@ -949,13 +1010,13 @@ class Coop(commands.Cog):
 
             # Updates archive JSON
             archive = utils.read_json("participation_archive")
-            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member.id)] = "yes"
+            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(author_id)] = "yes"
             utils.save_json("participation_archive", archive)
 
             # Updates contract message
             remaining_mentions = []
             for id in running_coops[contract_id]["remaining"]:
-                remaining_mentions.append(ctx.guild.get_member(id).mention)
+                remaining_mentions.append(utils.get_member_mention(id, ctx.guild))
                 
             channel = discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"])
             contract_message = await channel.fetch_message(running_coops[contract_id]["message_id"])
@@ -976,7 +1037,7 @@ class Coop(commands.Cog):
             coop_embed.title = f"Coop {coop_nb} - {member_count}/{running_coops[contract_id]['size']}{' FULL' if full else ''}"
             desc = f"**Members:**\n- {ctx.guild.get_member(coop_dic['creator']).mention} (Creator)\n"
             for member_id in coop_dic["members"]:
-                desc = desc + f"- {ctx.guild.get_member(member_id).mention}\n"
+                desc = desc + f"- {utils.get_member_mention(member_id, ctx.guild)}\n"
             coop_embed.description = desc
 
             action_row = [create_actionrow(create_button(style=ButtonStyle.green,
@@ -984,30 +1045,54 @@ class Coop(commands.Cog):
                                                         custom_id=f"joincoop_{contract_id}_{coop_nb}",
                                                         disabled=full
                                                         ))]
-            await ctx.edit_origin(embed=coop_embed, components=action_row)
+            await ctx.origin_message.edit(embed=coop_embed, components=action_row)
 
             # Sends coop code in hidden message
-            await ctx.send(f"Code to join **Coop {coop_nb}** of contract **{contract_id}** is: `{coop_dic['code']}`\n" +
-                            "Don't forget to activate your deflector and ship in bottle :wink:", hidden=True)
+            await ctx_send.send(f"Code to join **Coop {coop_nb}** of contract **{contract_id}** is: `{coop_dic['code']}`\n" +
+                                "Don't forget to activate your deflector and ship in bottle :wink:", hidden=True)
         
         # Already done leggacy button
         elif ctx.custom_id.startswith("leggacy_"):
             contract_id = ctx.custom_id.split('_')[1]
 
+            author_id = ctx.author.id
+
+            # Check for alt
+            alt_dic = utils.read_json("alt_index")
+            alt_role = discord.utils.get(ctx.guild.roles, name="Alt")
+            if alt_role in ctx.author.roles:
+                action_row = create_actionrow(
+                                                create_button(style=ButtonStyle.grey,
+                                                    label=f"{alt_dic[str(ctx.author.id)]['main']}",
+                                                    custom_id="main"
+                                                ),
+                                                create_button(style=ButtonStyle.grey,
+                                                    label=f"{alt_dic[str(ctx.author.id)]['alt']}",
+                                                    custom_id="alt"
+                                                )
+                                            )
+                await ctx.send("Which account has already done the contract ?", components=[action_row], hidden=True)
+
+                ctx_alt: ComponentContext = await wait_for_component(self.bot, components=action_row)
+                if ctx_alt.custom_id == "alt":
+                    author_id = "alt" + str(ctx.author.id)
+                ctx_send = ctx_alt
+            else:
+                ctx_send = ctx
+
             running_coops = utils.read_json("running_coops")
-            member = ctx.author
-            if member.id in running_coops[contract_id]["already_done"]:
-                await ctx.send("You already told me that :smile:", hidden=True)
+            if author_id in running_coops[contract_id]["already_done"]:
+                await ctx_send.send("You already told me that :smile:", hidden=True)
                 return
             for coop in running_coops[contract_id]["coops"]:
-                if member.id in coop["members"]:
-                    await ctx.send("You have already joined a coop for this contract :smile:", hidden=True)
+                if author_id in coop["members"]:
+                    await ctx_send.send("You have already joined a coop for this contract :smile:", hidden=True)
                     return
             
             # Updates running_coops JSON
-            if member.id in running_coops[contract_id]["remaining"]:
-                running_coops[contract_id]["remaining"].remove(member.id)
-            running_coops[contract_id]["already_done"].append(member.id)
+            if author_id in running_coops[contract_id]["remaining"]:
+                running_coops[contract_id]["remaining"].remove(author_id)
+            running_coops[contract_id]["already_done"].append(author_id)
             utils.save_json("running_coops", running_coops)
 
             # Notif to coop organizers
@@ -1016,16 +1101,16 @@ class Coop(commands.Cog):
 
             # Updates archive JSON
             archive = utils.read_json("participation_archive")
-            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member.id)] = "leggacy"
+            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(author_id)] = "leggacy"
             utils.save_json("participation_archive", archive)
 
             # Updates contract message
             already_done_mentions = []
             for id in running_coops[contract_id]["already_done"]:
-                already_done_mentions.append(ctx.guild.get_member(id).mention)
+                already_done_mentions.append(utils.get_member_mention(id, ctx.guild))
             remaining_mentions = []
             for id in running_coops[contract_id]["remaining"]:
-                remaining_mentions.append(ctx.guild.get_member(id).mention)
+                remaining_mentions.append(utils.get_member_mention(id, ctx.guild))
             
             content = ctx.origin_message.content
             index = content.index("**Already done:**")
@@ -1033,7 +1118,10 @@ class Coop(commands.Cog):
                             + f"**Already done:** {''.join(already_done_mentions)}\n\n"
                             + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
                             )
-            await ctx.edit_origin(content=new_content)
+            await ctx.origin_message.edit(content=new_content)
+
+            # Responds to the interaction
+            await ctx_send.send(f"Marked you as already done :white_check_mark:", hidden=True)
 
 
     ########################

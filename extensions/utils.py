@@ -32,6 +32,18 @@ class Utils(commands.Cog):
             config = json.load(f)
         return config["guilds"][str(guild_id)]["BOT_CHANNEL_ID"]
 
+    @staticmethod
+    def get_member_mention(member_id, guild):
+        if str(member_id).startswith("alt"):
+            alt_dic = Utils.read_json("alt_index")
+            main_id = member_id.replace("alt", "")
+            return guild.get_member(int(main_id)).mention + f"({alt_dic[main_id]['alt']})"
+        elif discord.utils.get(guild.roles, name="Alt") in guild.get_member(member_id).roles:
+            alt_dic = Utils.read_json("alt_index")
+            return guild.get_member(member_id).mention + f"({alt_dic[str(member_id)]['main']})"
+        else:
+            return guild.get_member(member_id).mention
+
 def setup(bot):
     bot.add_cog(Utils(bot))
 
