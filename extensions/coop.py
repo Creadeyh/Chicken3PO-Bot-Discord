@@ -474,7 +474,6 @@ class Coop(commands.Cog):
     @is_bot_channel()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_slash_command())
     async def kick_from_coop(self, ctx: SlashContext, member: discord.Member, contract_id: str, coop_nb: int=None):
-        # TODO checks when kick yourself or last member of coop
         running_coops = self.utils.read_json("running_coops")
         if contract_id not in running_coops.keys():
             await ctx.send(":warning: Contract does not exist", hidden=True)
