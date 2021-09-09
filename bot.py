@@ -116,6 +116,8 @@ async def on_slash_command_error(ctx, error):
     if isinstance(error, CheckFailure):
         if any(substring in ctx.name for substring in ["Remove contract", "Coop completed", "Coop failed"]):
             await ctx.send("Unauthorized target message :no_entry_sign:", hidden=True)
+        elif discord.utils.get(ctx.guild.roles, name="AFK") in ctx.author.roles:
+            await ctx.send("Unauthorized command as AFK :no_entry_sign:", hidden=True)
         else:
             await ctx.send("Unauthorized channel for this command :no_entry_sign:", hidden=True)
     elif isinstance(error, commands.CheckAnyFailure):
