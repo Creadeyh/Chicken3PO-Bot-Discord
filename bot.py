@@ -38,7 +38,6 @@ async def on_ready():
 async def reload_extensions():
     bot.reload_extension("extensions.coop")
     bot.reload_extension("extensions.utils")
-    await slash.sync_all_commands()
 
 @bot.event
 async def on_guild_join(guild):
@@ -105,7 +104,6 @@ async def remove_from_server(ctx, id):
 ##### Command events #####
 ##########################
 
-# TODO change ?
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
@@ -143,6 +141,23 @@ async def setuphere(ctx):
     with open("config.json", "w") as f:
         json.dump(config, f, indent=4)
     await ctx.send(f"Bot commands channel set as {ctx.channel.mention}")
+
+    # Creates Coop Organizer, AFK and Alt roles if not exist
+    coop_role = discord.utils.get(ctx.guild.roles, name="Coop Organizer")
+    afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
+    alt_role = discord.utils.get(ctx.guild.roles, name="Alt")
+
+    if not coop_role:
+        await ctx.guild.create_role(name="Coop Organizer", mentionable=True)
+        await ctx.send("Coop Organizer role created")
+    if not afk_role:
+        await ctx.guild.create_role(name="AFK")
+        await ctx.send("AFK role created")
+    if not alt_role:
+        await ctx.guild.create_role(name="Alt")
+        await ctx.send("Alt role created")
+
+    await ctx.send("Bot setup done :white_check_mark:")
 
 bot.remove_command("help")
 
