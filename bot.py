@@ -144,14 +144,18 @@ async def setuphere(ctx):
         json.dump(config, f, indent=4)
     await ctx.send(f"Bot commands channel set as {ctx.channel.mention}")
 
-    # Creates Coop Organizer, AFK and Alt roles if not exist
+    # Creates Coop Organizer, Coop Creator, AFK and Alt roles if not exist
     coop_role = discord.utils.get(ctx.guild.roles, name="Coop Organizer")
+    creator_role = discord.utils.get(ctx.guild.roles, name="Coop Creator")
     afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
     alt_role = discord.utils.get(ctx.guild.roles, name="Alt")
 
     if not coop_role:
         await ctx.guild.create_role(name="Coop Organizer", mentionable=True)
         await ctx.send("Coop Organizer role created")
+    if not creator_role:
+        await ctx.guild.create_role(name="Coop Creator")
+        await ctx.send("Coop Creator role created")
     if not afk_role:
         await ctx.guild.create_role(name="AFK")
         await ctx.send("AFK role created")

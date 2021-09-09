@@ -37,19 +37,6 @@ class Coop(commands.Cog):
             afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
             return afk_role not in ctx.author.roles
         return commands.check(predicate)
-
-    def is_coop_creator_slash_command():
-        """
-        Checks if command author is creator of at least one of the running coops
-        """
-        def predicate(ctx):
-            running_coops = ctx.bot.get_cog("Utils").read_json("running_coops")
-            for contract in running_coops.values():
-                for coop in contract["coops"]:
-                    if ctx.author.id == coop["creator"]:
-                        return True
-            return False
-        return commands.check(predicate)
     
     def is_coop_creator_context_menu():
         def predicate(ctx):
@@ -108,7 +95,7 @@ class Coop(commands.Cog):
                             )
                         ])
     @is_bot_channel()
-    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"))
     async def add_contract(self, ctx: SlashContext, contract_id: str, size: int, is_leggacy: bool):
         
         running_coops = self.utils.read_json("running_coops")
@@ -128,11 +115,15 @@ class Coop(commands.Cog):
         category = await ctx.guild.create_category(contract_id)
         await category.move(after=ctx.channel.category)
         channel = await category.create_text_channel(contract_id,
+                                                    topic="DO NOT TYPE HERE",
+                                                    slowmode_delay=21600,
                                                     overwrites={
                                                         ctx.guild.default_role: discord.PermissionOverwrite(send_messages=False,
                                                                                                             add_reactions=False
                                                                                                             ),
-                                                        discord.utils.get(ctx.guild.roles, name="Chicken3PO"): discord.PermissionOverwrite(send_messages=True)
+                                                        discord.utils.get(ctx.guild.roles, name="Chicken3PO"): discord.PermissionOverwrite(send_messages=True),
+                                                        discord.utils.get(ctx.guild.roles, name="Coop Organizer"): discord.PermissionOverwrite(send_messages=True),
+                                                        discord.utils.get(ctx.guild.roles, name="Coop Creator"): discord.PermissionOverwrite(send_messages=True)
                                                     })
         
         # Gets people without the AFK role and who haven't done the contract already (according to bot archive)
@@ -282,6 +273,9 @@ class Coop(commands.Cog):
         running_coops[contract_id]["remaining"].remove(ctx.author.id)
         self.utils.save_json("running_coops", running_coops)
 
+        # Gives coop creator role
+        await ctx.author.add_roles(discord.utils.get(ctx.guild.roles, name="Coop Creator"))
+
         # Notif to coop organizers
         if len(running_coops[contract_id]["remaining"]) == 0:
             await self.send_notif_no_remaining(ctx.guild, contract_id)
@@ -322,7 +316,7 @@ class Coop(commands.Cog):
                             )
                         ])
     @is_bot_channel()
-    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_slash_command())
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"), commands.has_role("Coop Creator"))
     async def lock_coop(self, ctx: SlashContext, contract_id: str, coop_nb: int=None):
 
         running_coops = self.utils.read_json("running_coops")
@@ -360,7 +354,11 @@ class Coop(commands.Cog):
             self.utils.save_json("running_coops", running_coops)
         
         if coop_nb != None:
-            if (is_author_creator and creator_coop_nb == coop_nb) or self.bot.owner_id == ctx.author.id or ctx.author.guild_permissions.administrator:
+            coop_role = discord.utils.get(ctx.guild.roles, name="Coop Organizer")
+            if ((is_author_creator and creator_coop_nb == coop_nb)
+                    or self.bot.owner_id == ctx.author.id
+                    or ctx.author.guild_permissions.administrator
+                    or coop_role in ctx.author.roles):
                 await lock(coop_nb)
             else:
                 await ctx.send(f":warning: You are not the creator of **Coop {coop_nb}** of contract `{contract_id}`", hidden=True)
@@ -396,7 +394,7 @@ class Coop(commands.Cog):
                             )
                         ])
     @is_bot_channel()
-    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_slash_command())
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"), commands.has_role("Coop Creator"))
     async def unlock_coop(self, ctx: SlashContext, contract_id: str, coop_nb: int=None):
 
         running_coops = self.utils.read_json("running_coops")
@@ -436,7 +434,11 @@ class Coop(commands.Cog):
             self.utils.save_json("running_coops", running_coops)
         
         if coop_nb != None:
-            if (is_author_creator and creator_coop_nb == coop_nb) or self.bot.owner_id == ctx.author.id or ctx.author.guild_permissions.administrator:
+            coop_role = discord.utils.get(ctx.guild.roles, name="Coop Organizer")
+            if ((is_author_creator and creator_coop_nb == coop_nb) 
+                    or self.bot.owner_id == ctx.author.id
+                    or ctx.author.guild_permissions.administrator
+                    or coop_role in ctx.author.roles):
                 await unlock(coop_nb)
             else:
                 await ctx.send(f":warning: You are not the creator of **Coop {coop_nb}** of contract `{contract_id}`", hidden=True)
@@ -478,7 +480,7 @@ class Coop(commands.Cog):
                             )
                         ])
     @is_bot_channel()
-    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_slash_command())
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"), commands.has_role("Coop Creator"))
     async def kick_from_coop(self, ctx: SlashContext, member: discord.Member, contract_id: str, coop_nb: int=None):
 
         running_coops = self.utils.read_json("running_coops")
@@ -579,7 +581,11 @@ class Coop(commands.Cog):
             if is_author_creator and creator_coop_nb == coop_nb and member == ctx.author:
                 await ctx_send.send(":warning: You can't kick yourself as a coop creator", hidden=True)
                 return
-            if (is_author_creator and creator_coop_nb == coop_nb) or self.bot.owner_id == ctx.author.id or ctx.author.guild_permissions.administrator:
+            coop_role = discord.utils.get(ctx.guild.roles, name="Coop Organizer")
+            if ((is_author_creator and creator_coop_nb == coop_nb)
+                    or self.bot.owner_id == ctx.author.id
+                    or ctx.author.guild_permissions.administrator
+                    or coop_role in ctx.author.roles):
                 if member_id == running_coops[contract_id]["coops"][coop_nb-1]["creator"]:
                     await ctx_send.send(":warning: You can't kick the coop creator", hidden=True)
                     return
@@ -619,7 +625,7 @@ class Coop(commands.Cog):
                             )
                         ])
     @is_bot_channel()
-    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"))
     async def get_coop_codes(self, ctx: SlashContext, contract_id: str=""):
 
         running_coops = self.utils.read_json("running_coops")
@@ -790,7 +796,7 @@ class Coop(commands.Cog):
                             guild_ids=GUILD_IDS,
                             target=ContextMenuType.MESSAGE)
     @check_context_menu_target_contract()
-    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"))
     async def remove_contract(self, ctx: MenuContext):
         
         running_coops = self.utils.read_json("running_coops")
@@ -846,7 +852,7 @@ class Coop(commands.Cog):
                             guild_ids=GUILD_IDS,
                             target=ContextMenuType.MESSAGE)
     @check_context_menu_target_coop()
-    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_context_menu())
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"), is_coop_creator_context_menu())
     async def coop_completed(self, ctx: MenuContext):
         
         running_coops = self.utils.read_json("running_coops")
@@ -858,7 +864,11 @@ class Coop(commands.Cog):
                         return (contract_id, i+1)
         contract_id, coop_nb = get_contractid_coopnb()
 
-        if self.bot.owner_id != ctx.author.id and not ctx.author.guild_permissions.administrator and running_coops[contract_id]["coops"][coop_nb-1]["creator"] != ctx.author.id:
+        coop_role = discord.utils.get(ctx.guild.roles, name="Coop Organizer")
+        if (self.bot.owner_id != ctx.author.id
+                and not ctx.author.guild_permissions.administrator
+                and coop_role not in ctx.author.roles
+                and running_coops[contract_id]["coops"][coop_nb-1]["creator"] != ctx.author.id):
             await ctx.send(":warning: You are not the creator of this coop", hidden=True)
             return
         if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
@@ -877,6 +887,10 @@ class Coop(commands.Cog):
                                                         ))]
         await ctx.target_message.edit(embed=ctx.target_message.embeds[0], components=action_row)
 
+        # Removes coop creator role
+        creator = ctx.guild.get_member(running_coops[contract_id]["coops"][coop_nb-1]["creator"])
+        await creator.remove_roles(discord.utils.get(ctx.guild.roles, name="Coop Creator"))
+
         # Responds to the interaction
         await ctx.send(f"Marked the coop as completed :white_check_mark:", hidden=True)
 
@@ -884,7 +898,7 @@ class Coop(commands.Cog):
                             guild_ids=GUILD_IDS,
                             target=ContextMenuType.MESSAGE)
     @check_context_menu_target_coop()
-    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), is_coop_creator_context_menu())
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"), is_coop_creator_context_menu())
     async def coop_failed(self, ctx: MenuContext):
         
         running_coops = self.utils.read_json("running_coops")
@@ -896,12 +910,20 @@ class Coop(commands.Cog):
                         return (contract_id, i+1)
         contract_id, coop_nb = get_contractid_coopnb()
 
-        if self.bot.owner_id != ctx.author.id and not ctx.author.guild_permissions.administrator and running_coops[contract_id]["coops"][coop_nb-1]["creator"] != ctx.author.id:
+        coop_role = discord.utils.get(ctx.guild.roles, name="Coop Organizer")
+        if (self.bot.owner_id != ctx.author.id
+                and not ctx.author.guild_permissions.administrator
+                and coop_role not in ctx.author.roles
+                and running_coops[contract_id]["coops"][coop_nb-1]["creator"] != ctx.author.id):
             await ctx.send(":warning: You are not the creator of this coop", hidden=True)
             return
         if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
             await ctx.send(":warning: Coop is already completed or failed", hidden=True)
             return
+
+        # Removes coop creator role
+        creator = ctx.guild.get_member(running_coops[contract_id]["coops"][coop_nb-1]["creator"])
+        await creator.remove_roles(discord.utils.get(ctx.guild.roles, name="Coop Creator"))
 
         # Updates running_coops and archive JSONs
         archive = self.utils.read_json("participation_archive")
