@@ -260,6 +260,22 @@ class Coop(commands.Cog):
                                     )
         message = await contract_channel.send(embed=coop_embed, components=action_row)
 
+        # Creates coop channel and role
+        coop_role = await ctx.guild.create_role(name=f"{contract_id}-{coop_nb}")
+        coop_channel = await contract_channel.category.create_text_channel(f"coop-{coop_nb}",
+                                                                    overwrites={
+                                                                        ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                                                                        discord.utils.get(ctx.guild.roles, name="Chicken3PO"): discord.PermissionOverwrite(view_channel=True),
+                                                                        discord.utils.get(ctx.guild.roles, name="Coop Organizer"): discord.PermissionOverwrite(view_channel=True),
+                                                                        coop_role: discord.PermissionOverwrite(view_channel=True),
+                                                                    })
+        to_pin = await coop_channel.send(":x: Do not share the coop code with anyone outside of this coop\n" +
+                        ":x: Do not make the coop public unless told by a coop organizer\n\n" +
+                        f"Coop code: `{coop_code}`"
+                        )
+        await to_pin.pin()
+        await ctx.author.add_roles(coop_role)
+
         # Updates running_coops JSON
         coop_dic = {
             "code": coop_code,
@@ -576,6 +592,13 @@ class Coop(commands.Cog):
             archive = self.utils.read_json("participation_archive")
             archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member_id)] = "no"
             self.utils.save_json("participation_archive", archive)
+
+            # Removes coop role to remove access to coop channel
+            if str(member_id).startswith("alt"):
+                discord_id = member_id.replace("alt", "")
+            else:
+                discord_id = member_id
+            await ctx.guild.get_member(discord_id).remove_roles(discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{from_coop_nb}"))
         
         if coop_nb != None:
             if is_author_creator and creator_coop_nb == coop_nb and member == ctx.author:
@@ -879,6 +902,14 @@ class Coop(commands.Cog):
         running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"] = True
         self.utils.save_json("running_coops", running_coops)
 
+        # Deletes coop role and coop channel
+        await discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}").delete()
+
+        for channel in discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"]).category.text_channels:
+            if channel.name == f"coop-{coop_nb}":
+                await channel.delete()
+                break
+
         # Updates coop message
         action_row = [create_actionrow(create_button(style=ButtonStyle.blurple,
                                                         label="COMPLETED",
@@ -938,6 +969,14 @@ class Coop(commands.Cog):
 
         self.utils.save_json("running_coops", running_coops)
         self.utils.save_json("participation_archive", archive)
+
+        # Deletes coop role and coop channel
+        await discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}").delete()
+
+        for channel in discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"]).category.text_channels:
+            if channel.name == f"coop-{coop_nb}":
+                await channel.delete()
+                break
 
         # Updates coop message
         coop_embed = ctx.target_message.embeds[0]
@@ -1068,6 +1107,9 @@ class Coop(commands.Cog):
                                                         disabled=full
                                                         ))]
             await ctx.origin_message.edit(embed=coop_embed, components=action_row)
+
+            # Gives coop role for access to coop channel
+            await ctx.author.add_roles(discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}"))
 
             # Sends coop code in hidden message
             await ctx_send.send(f"Code to join **Coop {coop_nb}** of contract **{contract_id}** is: `{coop_dic['code']}`\n" +
