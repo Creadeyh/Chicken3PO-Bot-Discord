@@ -725,7 +725,7 @@ class Coop(commands.Cog):
                         "- Defines the channel as reserved for bot commands\n\n" +
 
                         "`/contract [contract-id] [size] [is-leggacy]`\n" +
-                        "- Admins only\n" +
+                        "- Admins and coop organizers only\n" +
                         "- Registers a new contract and creates a channel and category for it\n" +
                         "- *contract-id* = The unique ID for an EggInc contract\n" +
                         "- *size* = Number of slots available in the contract\n" +
@@ -738,27 +738,27 @@ class Coop(commands.Cog):
                         "- *locked* = Whether or not the coop is locked at creation. Prevents people from joining\n\n" +
 
                         "`/lock [contract-id] [coop-nb]`\n" +
-                        "- Admins and coop creator only\n" +
+                        "- Admins, coop organizers and coop creators only\n" +
                         "- Locks a coop, preventing people from joining\n" +
                         "- *contract-id* = The unique ID for an EggInc contract\n" +
                         "- *coop-nb* = The number of the coop. If not given, looks for the coop of which you are the creator\n\n" +
 
                         "`/unlock [contract-id] [coop-nb]`\n" +
-                        "- Admins and coop creator only\n" +
+                        "- Admins, coop organizers and coop creators only\n" +
                         "- Unlocks a coop, allowing people to join again\n" +
                         "- *contract-id* = The unique ID for an EggInc contract\n" +
                         "- *coop-nb* = The number of the coop. If not given, looks for the coop of which you are the creator\n\n",
                         hidden=True)
 
         await ctx.send("`/kick [member] [contract-id] [coop-nb]`\n" +
-                        "- Admins and coop creator only\n" +
+                        "- Admins, coop organizers and coop creators only\n" +
                         "- Kicks someone from a coop\n" +
                         "- *member* = The member to be kicked from the coop\n" +
                         "- *contract-id* = The unique ID for an EggInc contract\n" +
                         "- *coop-nb* = The number of the coop. If not given, looks for the coop of which you are the creator\n\n" +
 
                         "`/codes [contract-id]`\n" +
-                        "- Admins only\n" +
+                        "- Admins and coop organizers only\n" +
                         "- Sends the codes of currently running coops\n" +
                         "- *contract-id* = The contract for which you want the coop codes. If not given, sends for all running contracts\n\n" +
 
@@ -775,15 +775,15 @@ class Coop(commands.Cog):
                         "- *member* = The Discord account\n\n" +
 
                         "*Right click on coop message -> Applications -> `Coop completed`*\n" +
-                        "- Admins and coop creator only\n" +
+                        "- Admins, coop organizers and coop creators only\n" +
                         "- Marks the coop as completed\n\n" +
 
                         "*Right click on coop message -> Applications -> `Coop failed`*\n" +
-                        "- Admins and coop creator only\n" +
+                        "- Admins, coop organizers and coop creators only\n" +
                         "- Marks the coop as failed. Returns members to the remaining list\n\n" +
 
                         "*Right click on contract message -> Applications -> `Remove contract`*\n" +
-                        "- Admins only\n" +
+                        "- Admins and coop organizers only\n" +
                         "- If all coops are completed/failed, deletes the contract channel and category",
                         hidden=True)
 
