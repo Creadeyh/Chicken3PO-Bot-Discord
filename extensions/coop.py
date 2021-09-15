@@ -121,7 +121,7 @@ class Coop(commands.Cog):
                                                         ctx.guild.default_role: discord.PermissionOverwrite(send_messages=False,
                                                                                                             add_reactions=False
                                                                                                             ),
-                                                        discord.utils.get(ctx.guild.roles, name="Chicken3PO"): discord.PermissionOverwrite(send_messages=True),
+                                                        discord.utils.get(ctx.guild.roles, name=self.bot.user.name): discord.PermissionOverwrite(send_messages=True),
                                                         discord.utils.get(ctx.guild.roles, name="Coop Organizer"): discord.PermissionOverwrite(send_messages=True),
                                                         discord.utils.get(ctx.guild.roles, name="Coop Creator"): discord.PermissionOverwrite(send_messages=True)
                                                     })
@@ -265,7 +265,7 @@ class Coop(commands.Cog):
         coop_channel = await contract_channel.category.create_text_channel(f"coop-{coop_nb}",
                                                                     overwrites={
                                                                         ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                                                                        discord.utils.get(ctx.guild.roles, name="Chicken3PO"): discord.PermissionOverwrite(view_channel=True),
+                                                                        discord.utils.get(ctx.guild.roles, name=self.bot.user.name): discord.PermissionOverwrite(view_channel=True),
                                                                         discord.utils.get(ctx.guild.roles, name="Coop Organizer"): discord.PermissionOverwrite(view_channel=True),
                                                                         coop_role: discord.PermissionOverwrite(view_channel=True),
                                                                     })

@@ -32,7 +32,7 @@ utils = bot.get_cog("Utils")
 
 @bot.event
 async def on_ready():
-    await bot.change_presence(activity=discord.Game("Egg Inc with Wall-Egg | &help"))
+    await bot.change_presence(activity=discord.Game("Egg Inc with Wall-Egg | /help"))
     print("Bot is ready")
 
 async def reload_extensions():
