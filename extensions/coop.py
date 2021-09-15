@@ -823,6 +823,9 @@ class Coop(commands.Cog):
     async def remove_contract(self, ctx: MenuContext):
         
         running_coops = self.utils.read_json("running_coops")
+        with open("config.json", "r") as f:
+            config = json.load(f)
+            COOPS_BEFORE_AFK = config["guilds"][str(ctx.guild.id)]["COOPS_BEFORE_AFK"]
 
         for id in running_coops:
             if ctx.target_message.id == running_coops[id]["message_id"]:
@@ -852,13 +855,13 @@ class Coop(commands.Cog):
                 date_dic[date].append(coop)
         # Sorts by date
         date_dic = dict(sorted(date_dic.items(), reverse=True))
-        # If members has not participated in last 3 coops (excluding already done leggacies), gives him AFK role
+        # If members has not participated in last number of coops defined in COOPS_BEFORE_AFK (excluding already done leggacies), gives him AFK role
         # Alt accounts are not taken into account
         for member in ctx.guild.members:
             count = 0
             no_count = 0
             i = 0
-            while count < 3 and i < len(date_dic):
+            while count < COOPS_BEFORE_AFK and i < len(date_dic):
                 key = list(date_dic.keys())[i]
                 for coop in date_dic[key]:
                     if str(member.id) not in coop["participation"].keys():
@@ -868,7 +871,7 @@ class Coop(commands.Cog):
                     if coop["participation"][str(member.id)] != "leggacy":
                         count = count + 1
                 i = i + 1
-            if no_count >= 3:
+            if no_count >= COOPS_BEFORE_AFK:
                 await member.add_roles(discord.utils.get(ctx.guild.roles, name="AFK"))    
     
     @cog_ext.cog_context_menu(name="Coop completed",

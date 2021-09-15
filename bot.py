@@ -43,7 +43,10 @@ async def reload_extensions():
 async def on_guild_join(guild):
     with open("config.json", "r") as f:
         config = json.load(f)
-    config["guilds"][str(guild.id)] = {"BOT_CHANNEL_ID": ""}
+    config["guilds"][str(guild.id)] = {
+        "BOT_CHANNEL_ID": "",
+        "COOPS_BEFORE_AFK": 4
+        }
     with open("config.json", "w") as f:
         json.dump(config, f, indent=4)
     await reload_extensions()
