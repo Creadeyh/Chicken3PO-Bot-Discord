@@ -21,8 +21,10 @@ bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents)
 slash = SlashCommand(bot, sync_commands=True, sync_on_cog_reload=True)
 
 bot.load_extension("extensions.utils")
+bot.load_extension("extensions.user_utils")
 bot.load_extension("extensions.coop")
 coop = bot.get_cog("Coop")
+user_utils = bot.get_cog("UserUtils")
 utils = bot.get_cog("Utils")
 
 
@@ -36,8 +38,9 @@ async def on_ready():
     print("Bot is ready")
 
 async def reload_extensions():
-    bot.reload_extension("extensions.coop")
     bot.reload_extension("extensions.utils")
+    bot.reload_extension("extensions.user_utils")
+    bot.reload_extension("extensions.coop")
 
 @bot.event
 async def on_guild_join(guild):
@@ -45,7 +48,7 @@ async def on_guild_join(guild):
         config = json.load(f)
     config["guilds"][str(guild.id)] = {
         "BOT_CHANNEL_ID": "",
-        "COOPS_BEFORE_AFK": 4
+        "COOPS_BEFORE_AFK": 3
         }
     with open("config.json", "w") as f:
         json.dump(config, f, indent=4)
@@ -130,7 +133,7 @@ async def on_slash_command_error(ctx, error):
 
 
 #########################
-##### Base Commands #####
+##### Setup Command #####
 #########################
 
 @bot.command()
