@@ -48,7 +48,8 @@ async def on_guild_join(guild):
         config = json.load(f)
     config["guilds"][str(guild.id)] = {
         "BOT_CHANNEL_ID": "",
-        "COOPS_BEFORE_AFK": 3
+        "COOPS_BEFORE_AFK": 3,
+        "GUEST_ROLE_ID": ""
         }
     with open("config.json", "w") as f:
         json.dump(config, f, indent=4)

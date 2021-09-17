@@ -11,6 +11,12 @@ class Utils(commands.Cog):
         self.bot = bot
 
     @staticmethod
+    def read_guild_config(guild_id, key):
+        with open("config.json", "r") as f:
+            config = json.load(f)
+        return config["guilds"][str(guild_id)][key]
+
+    @staticmethod
     def read_json(name):
         try:
             with open(f"{JSON_PATH}{name}.json", "r") as f:

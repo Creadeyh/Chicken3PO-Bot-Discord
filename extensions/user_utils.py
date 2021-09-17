@@ -49,6 +49,10 @@ class UserUtils(commands.Cog):
                             create_choice(
                                 name="Number of coops missed before AFK",
                                 value="COOPS_BEFORE_AFK"
+                            ),
+                            create_choice(
+                                name="ID of the guest role which isn't taking part in coops",
+                                value="GUEST_ROLE_ID"
                             )
                         ]
                     ),
@@ -56,14 +60,14 @@ class UserUtils(commands.Cog):
                         name="value",
                         description="The value to set",
                         option_type=SlashCommandOptionType.STRING,
-                        required=True,
+                        required=True
                     )
                 ])
     @is_bot_channel()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
     async def settings(self, ctx: SlashContext, setting: str, value):
         
-        if setting == "COOPS_BEFORE_AFK":
+        if setting in ["COOPS_BEFORE_AFK", "GUEST_ROLE_ID"]:
             try:
                 value = int(value)
             except Exception:

@@ -145,13 +145,14 @@ class Coop(commands.Cog):
                     return True
             return False
         
+        guest_role = ctx.guild.get_role(self.utils.read_guild_config(ctx.guild.id, "GUEST_ROLE_ID"))
         afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
         alt_role = discord.utils.get(ctx.guild.roles, name="Alt")
         remaining_ids = []
         already_done_ids = []
         afk_ids = []
         for member in ctx.guild.members:
-            if not member.bot:
+            if not member.bot and not (guest_role and guest_role in member.roles):
                 if alt_role in member.roles:
                     ids = [member.id, "alt" + str(member.id)]
                 else:
