@@ -116,17 +116,25 @@ class Coop(commands.Cog):
         # Creates a category and channel below commands channel for the contract, where coops will be listed
         category = await ctx.guild.create_category(contract_id)
         await category.move(after=ctx.channel.category)
+
+        channel_overwrites = ctx.channel.overwrites.copy()
+        if ctx.guild.default_role in channel_overwrites.keys():
+            channel_overwrites[ctx.guild.default_role].update(view_channel=False)
+        else:
+            channel_overwrites[ctx.guild.default_role] = discord.PermissionOverwrite(view_channel=False)
+        
+        for role_name in [self.bot.user.name, "Coop Organizer", "Coop Creator"]:
+            role = discord.utils.get(ctx.guild.roles, name=role_name)
+            if role in channel_overwrites.keys():
+                channel_overwrites[role].update(view_channel=True, send_messages=True)
+            else:
+                channel_overwrites[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
+
         channel = await category.create_text_channel(contract_id,
                                                     topic="DO NOT TYPE HERE",
                                                     slowmode_delay=21600,
-                                                    overwrites={
-                                                        ctx.guild.default_role: discord.PermissionOverwrite(send_messages=False,
-                                                                                                            add_reactions=False
-                                                                                                            ),
-                                                        discord.utils.get(ctx.guild.roles, name=self.bot.user.name): discord.PermissionOverwrite(send_messages=True),
-                                                        discord.utils.get(ctx.guild.roles, name="Coop Organizer"): discord.PermissionOverwrite(send_messages=True),
-                                                        discord.utils.get(ctx.guild.roles, name="Coop Creator"): discord.PermissionOverwrite(send_messages=True)
-                                                    })
+                                                    overwrites=channel_overwrites
+                                                    )
         
         # Gets people without the AFK role and who haven't done the contract already (according to bot archive)
         def member_in_previous_coop(member_id):
