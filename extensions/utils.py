@@ -39,14 +39,20 @@ class Utils(commands.Cog):
         return config["guilds"][str(guild_id)]["BOT_CHANNEL_ID"]
 
     @staticmethod
-    def get_member_mention(member_id, guild):
+    async def get_member_mention(member_id, guild, bot):
+        # Id is an alt account
         if str(member_id).startswith("alt"):
             alt_dic = Utils.read_json("alt_index")
             main_id = member_id.replace("alt", "")
             return guild.get_member(int(main_id)).mention + f"({alt_dic[main_id]['alt']})"
+        # Member has left the guild
+        elif member_id not in [mem.id for mem in guild.members]:
+            return (await bot.fetch_user(member_id)).mention
+        # Reference to main account if member has an alt
         elif discord.utils.get(guild.roles, name="Alt") in guild.get_member(member_id).roles:
             alt_dic = Utils.read_json("alt_index")
             return guild.get_member(member_id).mention + f"({alt_dic[str(member_id)]['main']})"
+        # Member is in the guild and doesn't have an alt
         else:
             return guild.get_member(member_id).mention
 
