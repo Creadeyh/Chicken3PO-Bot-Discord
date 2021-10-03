@@ -1,3 +1,13 @@
+# v1.2.2
+
+**Changes:**
+
+- Added changelog file in source
+
+**Bugfixes:**
+
+- Commands now properly manage users who left the guild
+
 # v1.2.1
 
 **Changes:**
