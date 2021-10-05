@@ -53,6 +53,10 @@ class UserUtils(commands.Cog):
                             create_choice(
                                 name="ID of the guest role which isn't taking part in coops",
                                 value="GUEST_ROLE_ID"
+                            ),
+                            create_choice(
+                                name="Whether or not to keep coop channel after the coop has been marked completed or failed (true/false)",
+                                value="KEEP_COOP_CHANNELS"
                             )
                         ]
                     ),
@@ -71,6 +75,14 @@ class UserUtils(commands.Cog):
             try:
                 value = int(value)
             except Exception:
+                await ctx.send(":warning: Invalid value", hidden=True)
+                return
+        elif setting == "KEEP_COOP_CHANNELS":
+            if value.lower() == "true":
+                value = True
+            elif value.lower() == "false":
+                value = False
+            else:
                 await ctx.send(":warning: Invalid value", hidden=True)
                 return
             

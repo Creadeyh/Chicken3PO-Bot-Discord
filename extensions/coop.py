@@ -797,8 +797,15 @@ class Coop(commands.Cog):
                 await ctx.send(":warning: Some coops are still running", hidden=True)
                 return
 
-        # Deletes contract channel and category
+        # Deletes contract channel, category, and all coop channels and roles leftover
         contract_channel = discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"])
+
+        for channel in contract_channel.category.channels:
+            if channel != contract_channel:
+                coop_nb = channel.name.split("-")[1]
+                await discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}").delete()
+                await channel.delete()
+
         await contract_channel.category.delete()
         await contract_channel.delete()
 
@@ -843,6 +850,9 @@ class Coop(commands.Cog):
     async def coop_completed(self, ctx: MenuContext):
         
         running_coops = self.utils.read_json("running_coops")
+        with open("config.json", "r") as f:
+            config = json.load(f)
+            KEEP_COOP_CHANNELS = config["guilds"][str(ctx.guild.id)]["KEEP_COOP_CHANNELS"]
 
         def get_contractid_coopnb():
             for contract_id in running_coops:
@@ -863,12 +873,13 @@ class Coop(commands.Cog):
             return
 
         # Deletes coop role and coop channel
-        await discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}").delete()
+        if not KEEP_COOP_CHANNELS:
+            await discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}").delete()
 
-        for channel in discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"]).category.text_channels:
-            if channel.name == f"coop-{coop_nb}":
-                await channel.delete()
-                break
+            for channel in discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"]).category.text_channels:
+                if channel.name == f"coop-{coop_nb}":
+                    await channel.delete()
+                    break
 
         # Updates coop message
         action_row = [create_actionrow(create_button(style=ButtonStyle.blurple,
@@ -899,6 +910,9 @@ class Coop(commands.Cog):
     async def coop_failed(self, ctx: MenuContext):
         
         running_coops = self.utils.read_json("running_coops")
+        with open("config.json", "r") as f:
+            config = json.load(f)
+            KEEP_COOP_CHANNELS = config["guilds"][str(ctx.guild.id)]["KEEP_COOP_CHANNELS"]
 
         def get_contractid_coopnb():
             for contract_id in running_coops:
@@ -936,12 +950,13 @@ class Coop(commands.Cog):
         running_coops[contract_id]["coops"][coop_nb-1]["members"] = []
 
         # Deletes coop role and coop channel
-        await discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}").delete()
+        if not KEEP_COOP_CHANNELS:
+            await discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}").delete()
 
-        for channel in discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"]).category.text_channels:
-            if channel.name == f"coop-{coop_nb}":
-                await channel.delete()
-                break
+            for channel in discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"]).category.text_channels:
+                if channel.name == f"coop-{coop_nb}":
+                    await channel.delete()
+                    break
 
         # Updates coop message
         coop_embed = ctx.target_message.embeds[0]
