@@ -84,15 +84,15 @@ async def reload_extensions_command(ctx):
 @commands.is_owner()
 async def get_server_list(ctx):
 
+    dm_channel = ctx.author.dm_channel
+    if dm_channel == None:
+        await ctx.author.create_dm()
         dm_channel = ctx.author.dm_channel
-        if dm_channel == None:
-            await ctx.author.create_dm()
-            dm_channel = ctx.author.dm_channel
 
-        liste = {}
-        for guild in bot.guilds:
-            liste[guild.name] = guild.id
-        await dm_channel.send(liste)
+    liste = {}
+    for guild in bot.guilds:
+        liste[guild.name] = guild.id
+    await dm_channel.send(liste)
 
 @bot.command(name="removeserver")
 @commands.is_owner()
@@ -105,6 +105,45 @@ async def remove_from_server(ctx, id):
         return
     else:
         await ctx.send(f"Left {guild.name} :wink:")
+
+@bot.command(name="getdatafile")
+@commands.is_owner()
+async def get_data_file(ctx, filename):
+
+    dm_channel = ctx.author.dm_channel
+    if dm_channel == None:
+        await ctx.author.create_dm()
+        dm_channel = ctx.author.dm_channel
+    
+    try:
+        with open(f"data/{filename}.json", "rb") as f:
+            await dm_channel.send(file=discord.File(f))
+    except Exception as inst:
+        await ctx.send(f"Administrative error (#3) :confounded:\n```{type(inst)}\n{inst}```")
+        return
+
+@bot.command(name="modifydatafile")
+@commands.is_owner()
+async def modify_data_file(ctx, filename, key_path, value):
+
+    try:
+        file = utils.read_json(filename)
+
+        data = file
+        keys = key_path.split("/")
+        i = 1
+        while i < len(keys):
+            if keys[i-1].isnumeric():
+                data = data[int(keys[i-1])]
+            else:
+                data = data[keys[i-1]]
+            i += 1
+        
+        data[keys[-1]] = value
+        utils.save_json(filename, file)
+    except Exception as inst:
+        await ctx.send(f"Administrative error (#4) :confounded:\n```{type(inst)}\n{inst}```")
+        return
 
 
 ##########################
