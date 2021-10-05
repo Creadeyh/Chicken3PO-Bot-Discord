@@ -262,7 +262,7 @@ class Coop(commands.Cog):
         # Creates coop message with join button
         coop_nb = len(running_coops[contract_id]["coops"]) + 1
         contract_channel = discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"])
-        action_row = [create_actionrow(create_button(style=ButtonStyle.green,
+        action_row = [create_actionrow(create_button(style=(ButtonStyle.red if locked else ButtonStyle.green),
                                                     label=f"{'LOCKED' if locked else 'Join'}",
                                                     custom_id=f"joincoop_{contract_id}_{coop_nb}",
                                                     disabled=locked
