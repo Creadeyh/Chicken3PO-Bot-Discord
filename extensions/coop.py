@@ -118,6 +118,8 @@ class Coop(commands.Cog):
         await category.move(after=ctx.channel.category)
 
         channel_overwrites = ctx.channel.overwrites.copy()
+        for overwrite in channel_overwrites.values():
+            overwrite.update(send_messages=False)
         if ctx.guild.default_role in channel_overwrites.keys():
             channel_overwrites[ctx.guild.default_role].update(view_channel=False)
         else:
