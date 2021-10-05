@@ -271,7 +271,7 @@ class Coop(commands.Cog):
                                     title=f"Coop {coop_nb} - 1/{running_coops[contract_id]['size']}",
                                     description=f"**Members:**\n- {ctx.author.mention} (Creator)\n"
                                     )
-        message = await contract_channel.send(embed=coop_embed, components=action_row)
+        coop_message = await contract_channel.send(embed=coop_embed, components=action_row)
 
         # Creates coop channel and role
         coop_role = await ctx.guild.create_role(name=f"{contract_id}-{coop_nb}")
@@ -289,30 +289,24 @@ class Coop(commands.Cog):
         await to_pin.pin()
         await ctx.author.add_roles(coop_role)
 
+        # Gives coop creator role
+        await ctx.author.add_roles(discord.utils.get(ctx.guild.roles, name="Coop Creator"))
+
         # Updates running_coops JSON
         coop_dic = {
             "code": coop_code,
             "creator": ctx.author.id,
-            "message_id": message.id,
+            "message_id": coop_message.id,
             "locked": locked,
             "completed_or_failed": False,
             "members": [ctx.author.id]
         }
         running_coops[contract_id]["coops"].append(coop_dic)
         running_coops[contract_id]["remaining"].remove(ctx.author.id)
-        self.utils.save_json("running_coops", running_coops)
-
-        # Gives coop creator role
-        await ctx.author.add_roles(discord.utils.get(ctx.guild.roles, name="Coop Creator"))
 
         # Notif to coop organizers
         if len(running_coops[contract_id]["remaining"]) == 0:
             await self.send_notif_no_remaining(ctx.guild, contract_id)
-
-        # Updates archive JSON
-        archive = self.utils.read_json("participation_archive")
-        archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(ctx.author.id)] = "yes"
-        self.utils.save_json("participation_archive", archive)
 
         # Updates contract message
         remaining_mentions = []
@@ -323,6 +317,14 @@ class Coop(commands.Cog):
         remaining_index = contract_message.content.index("**Remaining:")
         new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
         await contract_message.edit(content=new_contract_content)
+
+        # Saves JSON
+        self.utils.save_json("running_coops", running_coops)
+
+        # Updates archive JSON
+        archive = self.utils.read_json("participation_archive")
+        archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(ctx.author.id)] = "yes"
+        self.utils.save_json("participation_archive", archive)
 
         # Responds to the interaction
         await ctx.send("Coop registered :white_check_mark:", hidden=True)
@@ -567,12 +569,12 @@ class Coop(commands.Cog):
             if running_coops[contract_id]["coops"][i]["creator"] == ctx.author.id:
                 is_author_creator = True
                 creator_coop_nb = i + 1
+        
 
         async def kick(from_coop_nb):
             # Updates running_coops JSON
             running_coops[contract_id]["coops"][from_coop_nb-1]["members"].remove(member_id)
             running_coops[contract_id]["remaining"].append(member_id)
-            self.utils.save_json("running_coops", running_coops)
 
             # Updates coop message
             coop_dic = running_coops[contract_id]["coops"][from_coop_nb-1]
@@ -606,11 +608,6 @@ class Coop(commands.Cog):
             new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
             await contract_message.edit(content=new_contract_content)
 
-            # Updates archive JSON
-            archive = self.utils.read_json("participation_archive")
-            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member_id)] = "no"
-            self.utils.save_json("participation_archive", archive)
-
             # Removes coop role to remove access to coop channel
             if str(member_id).startswith("alt"):
                 discord_id = member_id.replace("alt", "")
@@ -618,6 +615,15 @@ class Coop(commands.Cog):
                 discord_id = member_id
             if type(member) == discord.Member:
                 await ctx.guild.get_member(discord_id).remove_roles(discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{from_coop_nb}"))
+
+            # Saves JSON
+            self.utils.save_json("running_coops", running_coops)
+
+            # Updates archive JSON
+            archive = self.utils.read_json("participation_archive")
+            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member_id)] = "no"
+            self.utils.save_json("participation_archive", archive)
+
         
         if coop_nb != None:
             if is_author_creator and creator_coop_nb == coop_nb and member == ctx.author:
@@ -723,13 +729,14 @@ class Coop(commands.Cog):
             await ctx.send(":warning: This user already has an alt account", hidden=True)
             return
 
+        await member.add_roles(alt_role)
+
         alt_dic = self.utils.read_json("alt_index")
         alt_dic[str(member.id)] = {
             "main": name_main,
             "alt": name_alt
         }
         self.utils.save_json("alt_index", alt_dic)
-        await member.add_roles(alt_role)
 
         await ctx.send("Alt account registered :white_check_mark:", hidden=True)
 
@@ -756,10 +763,11 @@ class Coop(commands.Cog):
             await ctx.send(":warning: This user has no alt account", hidden=True)
             return
 
+        await member.remove_roles(alt_role)
+
         alt_dic = self.utils.read_json("alt_index")
         alt_dic.pop(str(member.id))
         self.utils.save_json("alt_index", alt_dic)
-        await member.remove_roles(alt_role)
 
         await ctx.send("Alt account unregistered :white_check_mark:", hidden=True)
 
@@ -793,10 +801,6 @@ class Coop(commands.Cog):
         contract_channel = discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"])
         await contract_channel.category.delete()
         await contract_channel.delete()
-        
-        # Updates running_coops JSON
-        running_coops.pop(contract_id)
-        self.utils.save_json("running_coops", running_coops)
 
         # Checks for new AFK
         archive = self.utils.read_json("participation_archive")
@@ -825,7 +829,11 @@ class Coop(commands.Cog):
                         count = count + 1
                 i = i + 1
             if no_count >= COOPS_BEFORE_AFK:
-                await member.add_roles(discord.utils.get(ctx.guild.roles, name="AFK"))    
+                await member.add_roles(discord.utils.get(ctx.guild.roles, name="AFK"))
+        
+        # Updates running_coops JSON
+        running_coops.pop(contract_id)
+        self.utils.save_json("running_coops", running_coops)
     
     @cog_ext.cog_context_menu(name="Coop completed",
                             guild_ids=GUILD_IDS,
@@ -854,10 +862,6 @@ class Coop(commands.Cog):
             await ctx.send(":warning: Coop is already completed or failed", hidden=True)
             return
 
-        # Updates running_coops JSON
-        running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"] = True
-        self.utils.save_json("running_coops", running_coops)
-
         # Deletes coop role and coop channel
         await discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}").delete()
 
@@ -880,6 +884,10 @@ class Coop(commands.Cog):
         if creator != None:
             await creator.remove_roles(discord.utils.get(ctx.guild.roles, name="Coop Creator"))
 
+        # Updates running_coops JSON
+        running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"] = True
+        self.utils.save_json("running_coops", running_coops)
+        
         # Responds to the interaction
         await ctx.send(f"Marked the coop as completed :white_check_mark:", hidden=True)
 
@@ -927,9 +935,6 @@ class Coop(commands.Cog):
             archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member_id)] = "no"
         running_coops[contract_id]["coops"][coop_nb-1]["members"] = []
 
-        self.utils.save_json("running_coops", running_coops)
-        self.utils.save_json("participation_archive", archive)
-
         # Deletes coop role and coop channel
         await discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}").delete()
 
@@ -959,6 +964,10 @@ class Coop(commands.Cog):
         remaining_index = contract_message.content.index("**Remaining:")
         new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
         await contract_message.edit(content=new_contract_content)
+
+        # Saves JSONs
+        self.utils.save_json("running_coops", running_coops)
+        self.utils.save_json("participation_archive", archive)
 
         # Responds to the interaction
         await ctx.send(f"Marked the coop as failed :white_check_mark:", hidden=True)
@@ -1023,7 +1032,6 @@ class Coop(commands.Cog):
             else:
                 running_coops[contract_id]["remaining"].remove(author_id)
             running_coops[contract_id]["coops"][coop_nb-1]["members"].append(author_id)
-            utils.save_json("running_coops", running_coops)
 
             # Notif to coop organizers
             if len(running_coops[contract_id]["remaining"]) == 0:
@@ -1032,7 +1040,6 @@ class Coop(commands.Cog):
             # Updates archive JSON
             archive = utils.read_json("participation_archive")
             archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(author_id)] = "yes"
-            utils.save_json("participation_archive", archive)
 
             # Updates contract message
             remaining_mentions = []
@@ -1046,7 +1053,7 @@ class Coop(commands.Cog):
             await contract_message.edit(content=new_contract_content)
 
             # Updates coop message
-            coop_dic = running_coops[contract_id]["coops"][coop_nb-1]
+            coop_dic = running_coops[contract_id]["coops"][coop_nb-1].copy()
             member_count = len(coop_dic["members"])
             if member_count == running_coops[contract_id]['size']:
                 full = True
@@ -1070,6 +1077,10 @@ class Coop(commands.Cog):
 
             # Gives coop role for access to coop channel
             await ctx.author.add_roles(discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}"))
+
+            # Saves JSONs
+            utils.save_json("running_coops", running_coops)
+            utils.save_json("participation_archive", archive)
 
             # Sends coop code in hidden message
             await ctx_send.send(f"Code to join **Coop {coop_nb}** of contract **{contract_id}** is: `{coop_dic['code']}`\n" +
@@ -1117,7 +1128,6 @@ class Coop(commands.Cog):
             if author_id in running_coops[contract_id]["remaining"]:
                 running_coops[contract_id]["remaining"].remove(author_id)
             running_coops[contract_id]["already_done"].append(author_id)
-            utils.save_json("running_coops", running_coops)
 
             # Notif to coop organizers
             if len(running_coops[contract_id]["remaining"]) == 0:
@@ -1126,7 +1136,6 @@ class Coop(commands.Cog):
             # Updates archive JSON
             archive = utils.read_json("participation_archive")
             archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(author_id)] = "leggacy"
-            utils.save_json("participation_archive", archive)
 
             # Updates contract message
             already_done_mentions = []
@@ -1143,6 +1152,10 @@ class Coop(commands.Cog):
                             + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
                             )
             await ctx.origin_message.edit(content=new_content)
+
+            #Saves JSONs
+            utils.save_json("running_coops", running_coops)
+            utils.save_json("participation_archive", archive)
 
             # Responds to the interaction
             await ctx_send.send(f"Marked you as already done :white_check_mark:", hidden=True)
