@@ -55,6 +55,38 @@ class Utils(commands.Cog):
         # Member is in the guild and doesn't have an alt
         else:
             return guild.get_member(member_id).mention
+    
+    @staticmethod
+    def get_coop_embed(coop_nb, contract_size, creator_mention = None, other_members_mentions = [], color = discord.Color.random()):
+
+        if creator_mention:
+            title = f"Coop {coop_nb} - {len(other_members_mentions)+1}/{contract_size}{' FULL' if (len(other_members_mentions)+1) == contract_size else ''}"
+            desc = f"**Members:**\n- {creator_mention} (Creator)"
+            for mention in other_members_mentions:
+                desc = desc + f"\n- {mention}"
+        else:
+            title = f"Coop {coop_nb}"
+            desc = ""
+        
+        return discord.Embed(color=color, title=title, description=desc)
+    
+    @staticmethod
+    def get_coop_content(coop_nb, contract_size, creator_mention = None, other_members_mentions = []):
+
+        text = "> -------------------------\n"
+
+        if creator_mention:
+            text = text + f"> **Coop {coop_nb} - {len(other_members_mentions)+1}/{contract_size}{' FULL' if (len(other_members_mentions)+1) == contract_size else ''}**\n> \n"
+            text = text + f"> **Members:**\n> - {creator_mention} (Creator)\n"
+
+            for mention in other_members_mentions:
+                text = text + f"> - {mention}\n"
+        else:
+            text = text + f"> **Coop {coop_nb}**\n"
+        
+        text = text + "> -------------------------"
+        return text
+
 
 def setup(bot):
     bot.add_cog(Utils(bot))

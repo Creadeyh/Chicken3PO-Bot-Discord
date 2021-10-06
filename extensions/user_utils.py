@@ -57,6 +57,10 @@ class UserUtils(commands.Cog):
                             create_choice(
                                 name="Whether or not to keep coop channel after the coop has been marked completed or failed (true/false)",
                                 value="KEEP_COOP_CHANNELS"
+                            ),
+                            create_choice(
+                                name="Whether or not to use embeds, as mentions don't display on mobile if user not in cache (true/false)",
+                                value="USE_EMBEDS"
                             )
                         ]
                     ),
@@ -77,7 +81,7 @@ class UserUtils(commands.Cog):
             except Exception:
                 await ctx.send(":warning: Invalid value", hidden=True)
                 return
-        elif setting == "KEEP_COOP_CHANNELS":
+        elif setting in ["KEEP_COOP_CHANNELS", "USE_EMBEDS"]:
             if value.lower() == "true":
                 value = True
             elif value.lower() == "false":

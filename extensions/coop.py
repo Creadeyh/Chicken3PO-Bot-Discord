@@ -267,11 +267,13 @@ class Coop(commands.Cog):
                                                     custom_id=f"joincoop_{contract_id}_{coop_nb}",
                                                     disabled=locked
                                                     ))]
-        coop_embed = discord.Embed(color=discord.Color.random(),
-                                    title=f"Coop {coop_nb} - 1/{running_coops[contract_id]['size']}",
-                                    description=f"**Members:**\n- {ctx.author.mention} (Creator)\n"
-                                    )
-        coop_message = await contract_channel.send(embed=coop_embed, components=action_row)
+        
+        if self.utils.read_guild_config(ctx.guild.id, "USE_EMBEDS"):
+            coop_embed = self.utils.get_coop_embed(coop_nb, running_coops[contract_id]['size'], ctx.author.mention)
+            coop_message = await contract_channel.send(embed=coop_embed, components=action_row)
+        else:
+            coop_content = self.utils.get_coop_content(coop_nb, running_coops[contract_id]['size'], ctx.author.mention)
+            coop_message = await contract_channel.send(content=coop_content, components=action_row)
 
         # Creates coop channel and role
         coop_role = await ctx.guild.create_role(name=f"{contract_id}-{coop_nb}")
@@ -379,7 +381,7 @@ class Coop(commands.Cog):
                                                         custom_id=f"joincoop_{contract_id}_{coop_nb_to_lock}",
                                                         disabled=True
                                                         ))]
-            await coop_message.edit(embed=coop_message.embeds[0], components=action_row)
+            await coop_message.edit(components=action_row)
 
             running_coops[contract_id]["coops"][coop_nb_to_lock-1]["locked"] = True
             self.utils.save_json("running_coops", running_coops)
@@ -459,7 +461,7 @@ class Coop(commands.Cog):
                                                         custom_id=f"joincoop_{contract_id}_{coop_nb_to_unlock}",
                                                         disabled=is_full
                                                         ))]
-            await coop_message.edit(embed=coop_message.embeds[0], components=action_row)
+            await coop_message.edit(components=action_row)
 
             running_coops[contract_id]["coops"][coop_nb_to_unlock-1]["locked"] = False
             self.utils.save_json("running_coops", running_coops)
@@ -581,21 +583,33 @@ class Coop(commands.Cog):
             channel = discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"])
             coop_message = await channel.fetch_message(coop_dic["message_id"])
             
-            coop_embed = coop_message.embeds[0]
-            coop_embed.title = f"Coop {from_coop_nb} - {len(coop_dic['members'])}/{running_coops[contract_id]['size']}"
-            desc = f"**Members:**\n- {ctx.guild.get_member(coop_dic['creator']).mention} (Creator)\n"
+            other_members_mentions = []
             for id in coop_dic["members"]:
-                if id == coop_dic["creator"]:
-                    continue
-                desc = desc + f"- {await self.utils.get_member_mention(id, ctx.guild, self.bot)}\n"
-            coop_embed.description = desc
+                if id != coop_dic["creator"]:
+                    other_members_mentions.append(await self.utils.get_member_mention(id, ctx.guild, self.bot))
+
+            coop_embed = None
+            coop_content = None
+            if self.utils.read_guild_config(ctx.guild.id, "USE_EMBEDS"):
+                coop_embed = self.utils.get_coop_embed(from_coop_nb,
+                                                        running_coops[contract_id]['size'],
+                                                        await self.utils.get_member_mention(coop_dic['creator'], ctx.guild, self.bot),
+                                                        other_members_mentions,
+                                                        coop_message.embeds[0].color if coop_message.embeds else discord.Color.random()
+                                                        )
+            else:
+                coop_content = self.utils.get_coop_content(from_coop_nb,
+                                                            running_coops[contract_id]['size'],
+                                                            await self.utils.get_member_mention(coop_dic['creator'], ctx.guild, self.bot),
+                                                            other_members_mentions
+                                                            )
 
             action_row = [create_actionrow(create_button(style=ButtonStyle.red if coop_dic["locked"] else ButtonStyle.green,
                                                         label="LOCKED" if coop_dic["locked"] else "Join",
                                                         custom_id=f"joincoop_{contract_id}_{from_coop_nb}",
                                                         disabled=coop_dic["locked"]
                                                         ))]
-            await coop_message.edit(embed=coop_embed, components=action_row)
+            await coop_message.edit(content=coop_content, embed=coop_embed, components=action_row)
 
             # Updates contract message
             contract_message = await channel.fetch_message(running_coops[contract_id]["message_id"])
@@ -887,7 +901,7 @@ class Coop(commands.Cog):
                                                         custom_id=f"joincoop_{contract_id}_{coop_nb}",
                                                         disabled=True
                                                         ))]
-        await ctx.target_message.edit(embed=ctx.target_message.embeds[0], components=action_row)
+        await ctx.target_message.edit(components=action_row)
 
         # Removes coop creator role
         creator = ctx.guild.get_member(running_coops[contract_id]["coops"][coop_nb-1]["creator"])
@@ -959,15 +973,22 @@ class Coop(commands.Cog):
                     break
 
         # Updates coop message
-        coop_embed = ctx.target_message.embeds[0]
-        coop_embed.title = f"Coop {coop_nb}"
-        coop_embed.description = ""
+        coop_embed = None
+        coop_content = None
+        if self.utils.read_guild_config(ctx.guild.id, "USE_EMBEDS"):
+            coop_embed = self.utils.get_coop_embed(coop_nb,
+                                                running_coops[contract_id]['size'],
+                                                color=ctx.target_message.embeds[0].color if ctx.target_message.embeds else discord.Color.random()
+                                                )
+        else:
+            coop_content = self.utils.get_coop_content(coop_nb, running_coops[contract_id]['size'])
+
         action_row = [create_actionrow(create_button(style=ButtonStyle.red,
                                                         label="FAILED",
                                                         custom_id=f"joincoop_{contract_id}_{coop_nb}",
                                                         disabled=True
                                                         ))]
-        await ctx.target_message.edit(embed=coop_embed, components=action_row)
+        await ctx.target_message.edit(content=coop_content, embed=coop_embed, components=action_row)
 
         # Updates contract message
         contract_message = await ctx.target_message.channel.fetch_message(running_coops[contract_id]["message_id"])
@@ -1069,26 +1090,34 @@ class Coop(commands.Cog):
 
             # Updates coop message
             coop_dic = running_coops[contract_id]["coops"][coop_nb-1].copy()
-            member_count = len(coop_dic["members"])
-            if member_count == running_coops[contract_id]['size']:
-                full = True
-            else:
-                full = False
-            coop_dic["members"].remove(coop_dic["creator"])
 
-            coop_embed = ctx.origin_message.embeds[0]
-            coop_embed.title = f"Coop {coop_nb} - {member_count}/{running_coops[contract_id]['size']}{' FULL' if full else ''}"
-            desc = f"**Members:**\n- {ctx.guild.get_member(coop_dic['creator']).mention} (Creator)\n"
-            for member_id in coop_dic["members"]:
-                desc = desc + f"- {await utils.get_member_mention(member_id, ctx.guild, self.bot)}\n"
-            coop_embed.description = desc
+            other_members_mentions = []
+            for id in coop_dic["members"]:
+                if id != coop_dic["creator"]:
+                    other_members_mentions.append(await utils.get_member_mention(id, ctx.guild, self.bot))
+
+            coop_embed = None
+            coop_content = None
+            if utils.read_guild_config(ctx.guild.id, "USE_EMBEDS"):
+                coop_embed = utils.get_coop_embed(coop_nb,
+                                                    running_coops[contract_id]['size'],
+                                                    await utils.get_member_mention(coop_dic['creator'], ctx.guild, self.bot),
+                                                    other_members_mentions,
+                                                    ctx.origin_message.embeds[0].color if ctx.origin_message.embeds else discord.Color.random()
+                                                    )
+            else:
+                coop_content = utils.get_coop_content(coop_nb,
+                                                        running_coops[contract_id]['size'],
+                                                        await utils.get_member_mention(coop_dic['creator'], ctx.guild, self.bot),
+                                                        other_members_mentions
+                                                        )
 
             action_row = [create_actionrow(create_button(style=ButtonStyle.green,
                                                         label="Join",
                                                         custom_id=f"joincoop_{contract_id}_{coop_nb}",
-                                                        disabled=full
+                                                        disabled=(len(coop_dic["members"]) == running_coops[contract_id]['size'])
                                                         ))]
-            await ctx.origin_message.edit(embed=coop_embed, components=action_row)
+            await ctx.origin_message.edit(content=coop_content, embed=coop_embed, components=action_row)
 
             # Gives coop role for access to coop channel
             await ctx.author.add_roles(discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}"))
