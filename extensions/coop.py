@@ -1298,7 +1298,13 @@ class Coop(commands.Cog):
         creator = guild.get_member(running_coops[contract_id]["coops"][coop_nb-1]["creator"])
         # If creator has not left the guild
         if creator != None:
-            await creator.remove_roles(discord.utils.get(guild.roles, name="Coop Creator"))
+            keep_role = False
+            for id, contract in running_coops.items():
+                for i in range(len(contract["coops"])):
+                    if contract["coops"][i]["creator"] == creator.id and id != contract_id and not contract["coops"][i]["completed_or_failed"]:
+                        keep_role = True
+            if not keep_role:
+                await creator.remove_roles(discord.utils.get(guild.roles, name="Coop Creator"))
 
         # Updates running_coops JSON
         running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"] = True
@@ -1312,7 +1318,13 @@ class Coop(commands.Cog):
         creator = guild.get_member(running_coops[contract_id]["coops"][coop_nb-1]["creator"])
         # If creator has not left the guild
         if creator != None:
-            await creator.remove_roles(discord.utils.get(guild.roles, name="Coop Creator"))
+            keep_role = False
+            for id, contract in running_coops.items():
+                for i in range(len(contract["coops"])):
+                    if contract["coops"][i]["creator"] == creator.id and id != contract_id and not contract["coops"][i]["completed_or_failed"]:
+                        keep_role = True
+            if not keep_role:
+                await creator.remove_roles(discord.utils.get(guild.roles, name="Coop Creator"))
 
         # Updates running_coops and archive JSONs
         archive = self.utils.read_json("participation_archive")
