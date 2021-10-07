@@ -141,7 +141,15 @@ async def modify_data_file(ctx, filename, key_path, value):
                 data = data[keys[i-1]]
             i += 1
         
-        data[keys[-1]] = value
+        if value.isnumeric():
+            data[keys[-1]] = int(value)
+        elif value.lower() == "true":
+            data[keys[-1]] = True
+        elif value.lower() == "false":
+            data[keys[-1]] = False
+        else:
+            data[keys[-1]] = value
+        
         utils.save_json(filename, file)
     except Exception as inst:
         await ctx.send(f"Administrative error (#4) :confounded:\n```{type(inst)}\n{inst}```")
