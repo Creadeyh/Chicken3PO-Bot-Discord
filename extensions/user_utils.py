@@ -163,17 +163,25 @@ class UserUtils(commands.Cog):
                         "- Unregisters the alt EggInc account for the Discord account\n" +
                         "- *member* = The Discord account\n\n" +
 
-                        "*Right click on coop message -> Applications -> `Coop completed`*\n" +
+                        "`/coop-completed [contract_id] [coop_nb]`\n" +
+                        "OR *Right click on coop message -> Applications -> `Coop completed`*\n" +
                         "- Admins, coop organizers and coop creators only\n" +
-                        "- Marks the coop as completed\n\n" +
+                        "- Marks the coop as completed\n" +
+                        "- *contract-id* = The unique ID for an EggInc contract\n" +
+                        "- *coop-nb* = The number of the coop. If not given, looks for the coop of which you are the creator\n\n" +
 
-                        "*Right click on coop message -> Applications -> `Coop failed`*\n" +
+                        "`/coop-failed [contract_id] [coop_nb]`\n" +
+                        "OR *Right click on coop message -> Applications -> `Coop failed`*\n" +
                         "- Admins, coop organizers and coop creators only\n" +
-                        "- Marks the coop as failed. Returns members to the remaining list\n\n" +
+                        "- Marks the coop as failed. Returns members to the remaining list\n" +
+                        "- *contract-id* = The unique ID for an EggInc contract\n" +
+                        "- *coop-nb* = The number of the coop. If not given, looks for the coop of which you are the creator\n\n" +
 
-                        "*Right click on contract message -> Applications -> `Remove contract`*\n" +
+                        "`/contract-remove [contract_id]`\n" +
+                        "OR *Right click on contract message -> Applications -> `Remove contract`*\n" +
                         "- Admins and coop organizers only\n" +
-                        "- If all coops are completed/failed, deletes the contract channel and category",
+                        "- If all coops are completed/failed, deletes the contract channel and category\n" +
+                        "- *contract-id* = The unique ID for an EggInc contract",
                         hidden=True)
 
 

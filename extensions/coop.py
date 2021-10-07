@@ -785,6 +785,152 @@ class Coop(commands.Cog):
 
         await ctx.send("Alt account unregistered :white_check_mark:", hidden=True)
 
+    @cog_ext.cog_slash(name="contract-remove",
+                        description="If all coops are completed/failed, deletes the contract channel and category",
+                        guild_ids=GUILD_IDS,
+                        options=[
+                            create_option(
+                                name="contract_id",
+                                description="The unique ID for an EggInc contract",
+                                option_type=SlashCommandOptionType.STRING,
+                                required=True
+                            )
+                        ])
+    @is_bot_channel()
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"))
+    async def remove_contract_slash(self, ctx: SlashContext, contract_id: str):
+
+        running_coops = self.utils.read_json("running_coops")
+        if contract_id not in running_coops.keys():
+            await ctx.send(":warning: Contract does not exist", hidden=True)
+            return
+
+        for coop in running_coops[contract_id]["coops"]:
+            if not coop["completed_or_failed"]:
+                await ctx.send(":warning: Some coops are still running", hidden=True)
+                return
+        
+        await self.execute_remove_contract(ctx.guild, contract_id)
+
+        await ctx.send("Removed the contract :white_check_mark:", hidden=True)
+
+    @cog_ext.cog_slash(name="coop-completed",
+                        description="Marks the coop as completed",
+                        guild_ids=GUILD_IDS,
+                        options=[
+                            create_option(
+                                name="contract_id",
+                                description="The unique ID for an EggInc contract",
+                                option_type=SlashCommandOptionType.STRING,
+                                required=True
+                            ),
+                            create_option(
+                                name="coop_nb",
+                                description="The number of the coop. If not given, looks for the coop of which you are the creator",
+                                option_type=SlashCommandOptionType.INTEGER,
+                                required=False
+                            )
+                        ])
+    @is_bot_channel()
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"), commands.has_role("Coop Creator"))
+    async def coop_completed_slash(self, ctx: SlashContext, contract_id: str, coop_nb: int=None):
+        
+        running_coops = self.utils.read_json("running_coops")
+        if contract_id not in running_coops.keys():
+            await ctx.send(":warning: Contract does not exist", hidden=True)
+            return
+        if coop_nb != None:
+            if coop_nb <= 0 or coop_nb > len(running_coops[contract_id]["coops"]):
+                await ctx.send(":warning: Invalid coop number", hidden=True)
+                return
+            if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
+                await ctx.send(":warning: Coop is already completed or failed", hidden=True)
+                return
+        
+        is_author_creator = False
+        for i in range(len(running_coops[contract_id]["coops"])):
+            if running_coops[contract_id]["coops"][i]["creator"] == ctx.author.id:
+                is_author_creator = True
+                creator_coop_nb = i + 1
+        
+        if coop_nb != None:
+            coop_role = discord.utils.get(ctx.guild.roles, name="Coop Organizer")
+            if ((is_author_creator and creator_coop_nb == coop_nb)
+                    or self.bot.owner_id == ctx.author.id
+                    or ctx.author.guild_permissions.administrator
+                    or coop_role in ctx.author.roles):
+                await self.execute_coop_completed(ctx.guild, contract_id, coop_nb)
+            else:
+                await ctx.send(f":warning: You are not the creator of **Coop {coop_nb}** of contract `{contract_id}`", hidden=True)
+                return
+        else:
+            if is_author_creator:
+                await self.execute_coop_completed(ctx.guild, contract_id, creator_coop_nb)
+            else:
+                await ctx.send(f":warning: You are not creator of any coop for contract `{contract_id}`", hidden=True)
+                return
+        
+        # Responds to the interaction
+        await ctx.send(f"Marked the coop as completed :white_check_mark:", hidden=True)
+
+    @cog_ext.cog_slash(name="coop-failed",
+                        description="Marks the coop as failed. Returns members to the remaining list",
+                        guild_ids=GUILD_IDS,
+                        options=[
+                            create_option(
+                                name="contract_id",
+                                description="The unique ID for an EggInc contract",
+                                option_type=SlashCommandOptionType.STRING,
+                                required=True
+                            ),
+                            create_option(
+                                name="coop_nb",
+                                description="The number of the coop. If not given, looks for the coop of which you are the creator",
+                                option_type=SlashCommandOptionType.INTEGER,
+                                required=False
+                            )
+                        ])
+    @is_bot_channel()
+    @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"), commands.has_role("Coop Creator"))
+    async def coop_failed_slash(self, ctx: SlashContext, contract_id: str, coop_nb: int=None):
+        
+        running_coops = self.utils.read_json("running_coops")
+        if contract_id not in running_coops.keys():
+            await ctx.send(":warning: Contract does not exist", hidden=True)
+            return
+        if coop_nb != None:
+            if coop_nb <= 0 or coop_nb > len(running_coops[contract_id]["coops"]):
+                await ctx.send(":warning: Invalid coop number", hidden=True)
+                return
+            if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
+                await ctx.send(":warning: Coop is already completed or failed", hidden=True)
+                return
+        
+        is_author_creator = False
+        for i in range(len(running_coops[contract_id]["coops"])):
+            if running_coops[contract_id]["coops"][i]["creator"] == ctx.author.id:
+                is_author_creator = True
+                creator_coop_nb = i + 1
+        
+        if coop_nb != None:
+            coop_role = discord.utils.get(ctx.guild.roles, name="Coop Organizer")
+            if ((is_author_creator and creator_coop_nb == coop_nb)
+                    or self.bot.owner_id == ctx.author.id
+                    or ctx.author.guild_permissions.administrator
+                    or coop_role in ctx.author.roles):
+                await self.execute_coop_failed(ctx.guild, contract_id, coop_nb)
+            else:
+                await ctx.send(f":warning: You are not the creator of **Coop {coop_nb}** of contract `{contract_id}`", hidden=True)
+                return
+        else:
+            if is_author_creator:
+                await self.execute_coop_failed(ctx.guild, contract_id, creator_coop_nb)
+            else:
+                await ctx.send(f":warning: You are not creator of any coop for contract `{contract_id}`", hidden=True)
+                return
+        
+        # Responds to the interaction
+        await ctx.send(f"Marked the coop as failed :white_check_mark:", hidden=True)
 
     #########################
     ##### Context Menus #####
@@ -795,12 +941,9 @@ class Coop(commands.Cog):
                             target=ContextMenuType.MESSAGE)
     @check_context_menu_target_contract()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"))
-    async def remove_contract(self, ctx: MenuContext):
+    async def remove_contract_menu(self, ctx: MenuContext):
         
         running_coops = self.utils.read_json("running_coops")
-        with open("config.json", "r") as f:
-            config = json.load(f)
-            COOPS_BEFORE_AFK = config["guilds"][str(ctx.guild.id)]["COOPS_BEFORE_AFK"]
 
         for id in running_coops:
             if ctx.target_message.id == running_coops[id]["message_id"]:
@@ -810,63 +953,17 @@ class Coop(commands.Cog):
             if not coop["completed_or_failed"]:
                 await ctx.send(":warning: Some coops are still running", hidden=True)
                 return
-
-        # Deletes contract channel, category, and all coop channels and roles leftover
-        contract_channel = discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"])
-
-        for channel in contract_channel.category.channels:
-            if channel != contract_channel:
-                coop_nb = channel.name.split("-")[1]
-                await discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}").delete()
-                await channel.delete()
-
-        await contract_channel.category.delete()
-        await contract_channel.delete()
-
-        # Checks for new AFK
-        archive = self.utils.read_json("participation_archive")
-        date_dic = {}
-        for coops in archive.values():
-            for date, coop in coops.items():
-                if date not in date_dic.keys():
-                    date_dic[date] = []
-                date_dic[date].append(coop)
-        # Sorts by date
-        date_dic = dict(sorted(date_dic.items(), reverse=True))
-        # If members has not participated in last number of coops defined in COOPS_BEFORE_AFK (excluding already done leggacies), gives him AFK role
-        # Alt accounts are not taken into account
-        for member in ctx.guild.members:
-            count = 0
-            no_count = 0
-            i = 0
-            while count < COOPS_BEFORE_AFK and i < len(date_dic):
-                key = list(date_dic.keys())[i]
-                for coop in date_dic[key]:
-                    if str(member.id) not in coop["participation"].keys():
-                        continue
-                    if coop["participation"][str(member.id)] in ["no", "afk"]:
-                        no_count = no_count + 1
-                    if coop["participation"][str(member.id)] != "leggacy":
-                        count = count + 1
-                i = i + 1
-            if no_count >= COOPS_BEFORE_AFK:
-                await member.add_roles(discord.utils.get(ctx.guild.roles, name="AFK"))
         
-        # Updates running_coops JSON
-        running_coops.pop(contract_id)
-        self.utils.save_json("running_coops", running_coops)
+        await self.execute_remove_contract(ctx.guild, contract_id)
     
     @cog_ext.cog_context_menu(name="Coop completed",
                             guild_ids=GUILD_IDS,
                             target=ContextMenuType.MESSAGE)
     @check_context_menu_target_coop()
     @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"), is_coop_creator_context_menu())
-    async def coop_completed(self, ctx: MenuContext):
+    async def coop_completed_menu(self, ctx: MenuContext):
         
         running_coops = self.utils.read_json("running_coops")
-        with open("config.json", "r") as f:
-            config = json.load(f)
-            KEEP_COOP_CHANNELS = config["guilds"][str(ctx.guild.id)]["KEEP_COOP_CHANNELS"]
 
         def get_contractid_coopnb():
             for contract_id in running_coops:
@@ -886,32 +983,7 @@ class Coop(commands.Cog):
             await ctx.send(":warning: Coop is already completed or failed", hidden=True)
             return
 
-        # Deletes coop role and coop channel
-        if not KEEP_COOP_CHANNELS:
-            await discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}").delete()
-
-            for channel in discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"]).category.text_channels:
-                if channel.name == f"coop-{coop_nb}":
-                    await channel.delete()
-                    break
-
-        # Updates coop message
-        action_row = [create_actionrow(create_button(style=ButtonStyle.blurple,
-                                                        label="COMPLETED",
-                                                        custom_id=f"joincoop_{contract_id}_{coop_nb}",
-                                                        disabled=True
-                                                        ))]
-        await ctx.target_message.edit(components=action_row)
-
-        # Removes coop creator role
-        creator = ctx.guild.get_member(running_coops[contract_id]["coops"][coop_nb-1]["creator"])
-        # If creator has not left the guild
-        if creator != None:
-            await creator.remove_roles(discord.utils.get(ctx.guild.roles, name="Coop Creator"))
-
-        # Updates running_coops JSON
-        running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"] = True
-        self.utils.save_json("running_coops", running_coops)
+        await self.execute_coop_completed(ctx.guild, contract_id, coop_nb)
         
         # Responds to the interaction
         await ctx.send(f"Marked the coop as completed :white_check_mark:", hidden=True)
@@ -924,9 +996,6 @@ class Coop(commands.Cog):
     async def coop_failed(self, ctx: MenuContext):
         
         running_coops = self.utils.read_json("running_coops")
-        with open("config.json", "r") as f:
-            config = json.load(f)
-            KEEP_COOP_CHANNELS = config["guilds"][str(ctx.guild.id)]["KEEP_COOP_CHANNELS"]
 
         def get_contractid_coopnb():
             for contract_id in running_coops:
@@ -946,64 +1015,7 @@ class Coop(commands.Cog):
             await ctx.send(":warning: Coop is already completed or failed", hidden=True)
             return
 
-        # Removes coop creator role
-        creator = ctx.guild.get_member(running_coops[contract_id]["coops"][coop_nb-1]["creator"])
-        # If creator has not left the guild
-        if creator != None:
-            await creator.remove_roles(discord.utils.get(ctx.guild.roles, name="Coop Creator"))
-
-        # Updates running_coops and archive JSONs
-        archive = self.utils.read_json("participation_archive")
-
-        running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"] = True
-        running_coops[contract_id]["coops"][coop_nb-1]["creator"] = ""
-
-        for member_id in running_coops[contract_id]["coops"][coop_nb-1]["members"]:
-            running_coops[contract_id]["remaining"].append(member_id)
-            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member_id)] = "no"
-        running_coops[contract_id]["coops"][coop_nb-1]["members"] = []
-
-        # Deletes coop role and coop channel
-        if not KEEP_COOP_CHANNELS:
-            await discord.utils.get(ctx.guild.roles, name=f"{contract_id}-{coop_nb}").delete()
-
-            for channel in discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"]).category.text_channels:
-                if channel.name == f"coop-{coop_nb}":
-                    await channel.delete()
-                    break
-
-        # Updates coop message
-        coop_embed = None
-        coop_content = None
-        if self.utils.read_guild_config(ctx.guild.id, "USE_EMBEDS"):
-            coop_embed = self.utils.get_coop_embed(coop_nb,
-                                                running_coops[contract_id]['size'],
-                                                color=ctx.target_message.embeds[0].color if ctx.target_message.embeds else discord.Color.random()
-                                                )
-        else:
-            coop_content = self.utils.get_coop_content(coop_nb, running_coops[contract_id]['size'])
-
-        action_row = [create_actionrow(create_button(style=ButtonStyle.red,
-                                                        label="FAILED",
-                                                        custom_id=f"joincoop_{contract_id}_{coop_nb}",
-                                                        disabled=True
-                                                        ))]
-        await ctx.target_message.edit(content=coop_content, embed=coop_embed, components=action_row)
-
-        # Updates contract message
-        contract_message = await ctx.target_message.channel.fetch_message(running_coops[contract_id]["message_id"])
-
-        remaining_mentions = []
-        for id in running_coops[contract_id]["remaining"]:
-            remaining_mentions.append(await self.utils.get_member_mention(id, ctx.guild, self.bot))
-        
-        remaining_index = contract_message.content.index("**Remaining:")
-        new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
-        await contract_message.edit(content=new_contract_content)
-
-        # Saves JSONs
-        self.utils.save_json("running_coops", running_coops)
-        self.utils.save_json("participation_archive", archive)
+        await self.execute_coop_failed(ctx.guild, contract_id, coop_nb)
 
         # Responds to the interaction
         await ctx.send(f"Marked the coop as failed :white_check_mark:", hidden=True)
@@ -1208,6 +1220,155 @@ class Coop(commands.Cog):
     ########################
     ##### Misc methods #####
     ########################
+
+    async def execute_remove_contract(self, guild, contract_id):
+
+        running_coops = self.utils.read_json("running_coops")
+
+        # Deletes contract channel, category, and all coop channels and roles leftover
+        contract_channel = discord.utils.get(guild.channels, id=running_coops[contract_id]["channel_id"])
+
+        for channel in contract_channel.category.channels:
+            if channel != contract_channel:
+                coop_nb = channel.name.split("-")[1]
+                await discord.utils.get(guild.roles, name=f"{contract_id}-{coop_nb}").delete()
+                await channel.delete()
+
+        await contract_channel.category.delete()
+        await contract_channel.delete()
+
+        # Checks for new AFK
+        archive = self.utils.read_json("participation_archive")
+        date_dic = {}
+        for coops in archive.values():
+            for date, coop in coops.items():
+                if date not in date_dic.keys():
+                    date_dic[date] = []
+                date_dic[date].append(coop)
+        # Sorts by date
+        date_dic = dict(sorted(date_dic.items(), reverse=True))
+        # If members has not participated in last number of coops defined in COOPS_BEFORE_AFK (excluding already done leggacies), gives him AFK role
+        # Alt accounts are not taken into account
+        for member in guild.members:
+            count = 0
+            no_count = 0
+            i = 0
+            while count < self.utils.read_guild_config(guild.id, "COOPS_BEFORE_AFK") and i < len(date_dic):
+                key = list(date_dic.keys())[i]
+                for coop in date_dic[key]:
+                    if str(member.id) not in coop["participation"].keys():
+                        continue
+                    if coop["participation"][str(member.id)] in ["no", "afk"]:
+                        no_count = no_count + 1
+                    if coop["participation"][str(member.id)] != "leggacy":
+                        count = count + 1
+                i = i + 1
+            if no_count >= self.utils.read_guild_config(guild.id, "COOPS_BEFORE_AFK"):
+                await member.add_roles(discord.utils.get(guild.roles, name="AFK"))
+        
+        # Updates running_coops JSON
+        running_coops.pop(contract_id)
+        self.utils.save_json("running_coops", running_coops)
+
+    async def execute_coop_completed(self, guild, contract_id, coop_nb):
+        
+        running_coops = self.utils.read_json("running_coops")
+
+        # Deletes coop role and coop channel
+        if not self.utils.read_guild_config(guild.id, "KEEP_COOP_CHANNELS"):
+            await discord.utils.get(guild.roles, name=f"{contract_id}-{coop_nb}").delete()
+
+            for channel in discord.utils.get(guild.channels, id=running_coops[contract_id]["channel_id"]).category.text_channels:
+                if channel.name == f"coop-{coop_nb}":
+                    await channel.delete()
+                    break
+
+        # Updates coop message
+        channel = discord.utils.get(guild.channels, id=running_coops[contract_id]["channel_id"])
+        coop_message = await channel.fetch_message(running_coops[contract_id]["coops"][coop_nb-1]["message_id"])
+        
+        action_row = [create_actionrow(create_button(style=ButtonStyle.blurple,
+                                                        label="COMPLETED",
+                                                        custom_id=f"joincoop_{contract_id}_{coop_nb}",
+                                                        disabled=True
+                                                        ))]
+        await coop_message.edit(components=action_row)
+
+        # Removes coop creator role
+        creator = guild.get_member(running_coops[contract_id]["coops"][coop_nb-1]["creator"])
+        # If creator has not left the guild
+        if creator != None:
+            await creator.remove_roles(discord.utils.get(guild.roles, name="Coop Creator"))
+
+        # Updates running_coops JSON
+        running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"] = True
+        self.utils.save_json("running_coops", running_coops)
+
+    async def execute_coop_failed(self, guild, contract_id, coop_nb):
+        
+        running_coops = self.utils.read_json("running_coops")
+
+        # Removes coop creator role
+        creator = guild.get_member(running_coops[contract_id]["coops"][coop_nb-1]["creator"])
+        # If creator has not left the guild
+        if creator != None:
+            await creator.remove_roles(discord.utils.get(guild.roles, name="Coop Creator"))
+
+        # Updates running_coops and archive JSONs
+        archive = self.utils.read_json("participation_archive")
+
+        running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"] = True
+        running_coops[contract_id]["coops"][coop_nb-1]["creator"] = ""
+
+        for member_id in running_coops[contract_id]["coops"][coop_nb-1]["members"]:
+            running_coops[contract_id]["remaining"].append(member_id)
+            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(member_id)] = "no"
+        running_coops[contract_id]["coops"][coop_nb-1]["members"] = []
+
+        # Deletes coop role and coop channel
+        if not self.utils.read_guild_config(guild.id, "KEEP_COOP_CHANNELS"):
+            await discord.utils.get(guild.roles, name=f"{contract_id}-{coop_nb}").delete()
+
+            for channel in discord.utils.get(guild.channels, id=running_coops[contract_id]["channel_id"]).category.text_channels:
+                if channel.name == f"coop-{coop_nb}":
+                    await channel.delete()
+                    break
+
+        # Updates coop message
+        contract_channel = discord.utils.get(guild.channels, id=running_coops[contract_id]["channel_id"])
+        coop_message = await contract_channel.fetch_message(running_coops[contract_id]["coops"][coop_nb-1]["message_id"])
+
+        coop_embed = None
+        coop_content = None
+        if self.utils.read_guild_config(guild.id, "USE_EMBEDS"):
+            coop_embed = self.utils.get_coop_embed(coop_nb,
+                                                running_coops[contract_id]['size'],
+                                                color=coop_message.embeds[0].color if coop_message.embeds else discord.Color.random()
+                                                )
+        else:
+            coop_content = self.utils.get_coop_content(coop_nb, running_coops[contract_id]['size'])
+
+        action_row = [create_actionrow(create_button(style=ButtonStyle.red,
+                                                        label="FAILED",
+                                                        custom_id=f"joincoop_{contract_id}_{coop_nb}",
+                                                        disabled=True
+                                                        ))]
+        await coop_message.edit(content=coop_content, embed=coop_embed, components=action_row)
+
+        # Updates contract message
+        contract_message = await contract_channel.fetch_message(running_coops[contract_id]["message_id"])
+
+        remaining_mentions = []
+        for id in running_coops[contract_id]["remaining"]:
+            remaining_mentions.append(await self.utils.get_member_mention(id, guild, self.bot))
+        
+        remaining_index = contract_message.content.index("**Remaining:")
+        new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
+        await contract_message.edit(content=new_contract_content)
+
+        # Saves JSONs
+        self.utils.save_json("running_coops", running_coops)
+        self.utils.save_json("participation_archive", archive)
 
     async def send_notif_no_remaining(self, guild, contract_id):
         orga_role = discord.utils.get(guild.roles, name="Coop Organizer")
