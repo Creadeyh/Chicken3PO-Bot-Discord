@@ -1,3 +1,10 @@
+# v1.3.1
+
+**Bugfixes:**
+
+- Fixed the value type on the owner's command to modify JSON files
+- Fix: manage coop creator role when someone is creator of multiple coops at the same time
+
 # v1.3.0
 
 **New features:**
