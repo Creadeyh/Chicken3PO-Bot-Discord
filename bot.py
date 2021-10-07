@@ -49,7 +49,9 @@ async def on_guild_join(guild):
     config["guilds"][str(guild.id)] = {
         "BOT_CHANNEL_ID": "",
         "COOPS_BEFORE_AFK": 3,
-        "GUEST_ROLE_ID": ""
+        "GUEST_ROLE_ID": "",
+        "KEEP_COOP_CHANNELS": False,
+        "USE_EMBEDS": True
         }
     with open("config.json", "w") as f:
         json.dump(config, f, indent=4)
