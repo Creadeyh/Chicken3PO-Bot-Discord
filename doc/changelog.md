@@ -1,3 +1,17 @@
+# v1.3.0
+
+**New features:**
+
+- New commands reserved for the bot owner to be able to retrieve and modify the JSON data files remotely
+- Added setting to keep the coop channel after the coop is marked completed or failed
+- Added setting to be able not to use embeds, since mentions within embeds don't work on mobile if the user is not in cache
+- Added slash command alternatives to context menus, since they don't exist on mobile
+
+**Bugfixes:**
+
+- Fixed an issue where some roles could have unintended write messages permission in the contract channels
+- Fixed the color of the coop button which you stay green when the coop is locked at creation
+
 # v1.2.2
 
 **Changes:**
