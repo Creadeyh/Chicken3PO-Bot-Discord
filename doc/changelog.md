@@ -2,7 +2,7 @@
 
 **Bugfixes:**
 
-- Fixed the participation count for AFK role. It now ignores contract occurences which are still running
+- Fixed the participation count for AFK role. It now ignores contract occurrences which are still running
 
 # v1.3.1
 

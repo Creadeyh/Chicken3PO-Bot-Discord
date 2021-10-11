@@ -1243,15 +1243,15 @@ class Coop(commands.Cog):
         # Checks for new AFK
         archive = self.utils.read_json("participation_archive")
         date_dic = {}
-        for id, occurences in archive.items():
-            for date, occurence in occurences.items():
-                # If the contract occurence is still running, ignore
+        for id, occurrences in archive.items():
+            for date, occurrence in occurrences.items():
+                # If the contract occurrence is still running, ignore
                 if id in running_coops.keys() and date == running_coops[id]["date"]:
                     continue
                 # Else
                 if date not in date_dic.keys():
                     date_dic[date] = []
-                date_dic[date].append(occurence)
+                date_dic[date].append(occurrence)
         # Sorts by date
         date_dic = dict(sorted(date_dic.items(), reverse=True))
         # If members has not participated in last number of coops defined in COOPS_BEFORE_AFK (excluding already done leggacies), gives him AFK role
