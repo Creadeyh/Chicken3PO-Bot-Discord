@@ -1237,14 +1237,21 @@ class Coop(commands.Cog):
         await contract_channel.category.delete()
         await contract_channel.delete()
 
+        # Updates running_coops JSON
+        running_coops.pop(contract_id)
+
         # Checks for new AFK
         archive = self.utils.read_json("participation_archive")
         date_dic = {}
-        for coops in archive.values():
-            for date, coop in coops.items():
+        for id, occurences in archive.items():
+            for date, occurence in occurences.items():
+                # If the contract occurence is still running, ignore
+                if id in running_coops.keys() and date == running_coops[id]["date"]:
+                    continue
+                # Else
                 if date not in date_dic.keys():
                     date_dic[date] = []
-                date_dic[date].append(coop)
+                date_dic[date].append(occurence)
         # Sorts by date
         date_dic = dict(sorted(date_dic.items(), reverse=True))
         # If members has not participated in last number of coops defined in COOPS_BEFORE_AFK (excluding already done leggacies), gives him AFK role
@@ -1266,8 +1273,7 @@ class Coop(commands.Cog):
             if no_count >= self.utils.read_guild_config(guild.id, "COOPS_BEFORE_AFK"):
                 await member.add_roles(discord.utils.get(guild.roles, name="AFK"))
         
-        # Updates running_coops JSON
-        running_coops.pop(contract_id)
+        # Saves running_coops JSON
         self.utils.save_json("running_coops", running_coops)
 
     async def execute_coop_completed(self, guild, contract_id, coop_nb):
