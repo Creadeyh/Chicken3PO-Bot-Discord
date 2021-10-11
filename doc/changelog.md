@@ -1,3 +1,10 @@
+# v1.3.3
+
+**Changes:**
+
+- Removed useless contract ID in join message
+"you gotta idiot proof HARD for me, man" -DrJon
+
 # v1.3.2
 
 **Bugfixes:**

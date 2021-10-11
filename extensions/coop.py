@@ -1139,7 +1139,7 @@ class Coop(commands.Cog):
             utils.save_json("participation_archive", archive)
 
             # Sends coop code in hidden message
-            await ctx_send.send(f"Code to join **Coop {coop_nb}** of contract **{contract_id}** is: `{coop_dic['code']}`\n" +
+            await ctx_send.send(f"Code to join **Coop {coop_nb}** is: `{coop_dic['code']}`\n" +
                                 "Don't forget to activate your deflector and ship in bottle :wink:", hidden=True)
         
         # Already done leggacy button
