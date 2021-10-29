@@ -126,7 +126,7 @@ async def get_data_file(ctx, filename):
 
 @bot.command(name="modifydatafile")
 @commands.is_owner()
-async def modify_data_file(ctx, filename, key_path, value):
+async def modify_data_file(ctx, filename, key_path, value = None):
 
     try:
         file = utils.read_json(filename)
@@ -141,7 +141,12 @@ async def modify_data_file(ctx, filename, key_path, value):
                 data = data[keys[i-1]]
             i += 1
         
-        if value.isnumeric():
+        if value == None:
+            if type(data) == list:
+                data.pop(keys[-1])
+            else:
+                raise Exception
+        elif value.isnumeric():
             data[keys[-1]] = int(value)
         elif value.lower() == "true":
             data[keys[-1]] = True
