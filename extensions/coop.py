@@ -9,6 +9,7 @@ from discord_slash.model import *
 
 import json
 from datetime import date
+import uuid
 
 with open("config.json", "r") as f:
     config = json.load(f)
@@ -541,17 +542,21 @@ class Coop(commands.Cog):
                 action_row = create_actionrow(
                                                 create_button(style=ButtonStyle.grey,
                                                     label=f"{alt_dic[str(member.id)]['main']}",
-                                                    custom_id="main"
+                                                    custom_id=f"main-{uuid.uuid4()}"
                                                 ),
                                                 create_button(style=ButtonStyle.grey,
                                                     label=f"{alt_dic[str(member.id)]['alt']}",
-                                                    custom_id="alt"
+                                                    custom_id=f"alt-{uuid.uuid4()}"
                                                 )
                                             )
                 await ctx.send("Which account do you want to kick ?", components=[action_row], hidden=True)
 
-                ctx_alt: ComponentContext = await wait_for_component(self.bot, components=action_row)
-                if ctx_alt.custom_id == "alt":
+                try:
+                    ctx_alt: ComponentContext = await wait_for_component(self.bot, components=action_row, timeout=10)
+                except asyncio.TimeoutError:
+                    await ctx.send("Action cancelled :negative_squared_cross_mark:", hidden=True)
+                    return
+                if ctx_alt.custom_id.startswith("alt"):
                     member_id = "alt" + str(member.id)
                 ctx_send = ctx_alt
         else:
@@ -1051,17 +1056,21 @@ class Coop(commands.Cog):
                 action_row = create_actionrow(
                                                 create_button(style=ButtonStyle.grey,
                                                     label=f"{alt_dic[str(ctx.author.id)]['main']}",
-                                                    custom_id="main"
+                                                    custom_id=f"main-{uuid.uuid4()}"
                                                 ),
                                                 create_button(style=ButtonStyle.grey,
                                                     label=f"{alt_dic[str(ctx.author.id)]['alt']}",
-                                                    custom_id="alt"
+                                                    custom_id=f"alt-{uuid.uuid4()}"
                                                 )
                                             )
                 await ctx.send("Which account is joining ?", components=[action_row], hidden=True)
 
-                ctx_alt: ComponentContext = await wait_for_component(self.bot, components=action_row)
-                if ctx_alt.custom_id == "alt":
+                try:
+                    ctx_alt: ComponentContext = await wait_for_component(self.bot, components=action_row, timeout=10)
+                except asyncio.TimeoutError:
+                    await ctx.send("Action cancelled :negative_squared_cross_mark:", hidden=True)
+                    return
+                if ctx_alt.custom_id.startswith("alt"):
                     author_id = "alt" + str(ctx.author.id)
                     is_alt = True
                 ctx_send = ctx_alt
@@ -1162,17 +1171,21 @@ class Coop(commands.Cog):
                 action_row = create_actionrow(
                                                 create_button(style=ButtonStyle.grey,
                                                     label=f"{alt_dic[str(ctx.author.id)]['main']}",
-                                                    custom_id="main"
+                                                    custom_id=f"main-{uuid.uuid4()}"
                                                 ),
                                                 create_button(style=ButtonStyle.grey,
                                                     label=f"{alt_dic[str(ctx.author.id)]['alt']}",
-                                                    custom_id="alt"
+                                                    custom_id=f"alt-{uuid.uuid4()}"
                                                 )
                                             )
                 await ctx.send("Which account has already done the contract ?", components=[action_row], hidden=True)
 
-                ctx_alt: ComponentContext = await wait_for_component(self.bot, components=action_row)
-                if ctx_alt.custom_id == "alt":
+                try:
+                    ctx_alt: ComponentContext = await wait_for_component(self.bot, components=action_row, timeout=10)
+                except asyncio.TimeoutError:
+                    await ctx.send("Action cancelled :negative_squared_cross_mark:", hidden=True)
+                    return
+                if ctx_alt.custom_id.startswith("alt"):
                     author_id = "alt" + str(ctx.author.id)
                 ctx_send = ctx_alt
             else:
@@ -1240,16 +1253,20 @@ class Coop(commands.Cog):
                 action_row = create_actionrow(
                                                 create_button(style=ButtonStyle.green,
                                                     label="Yes",
-                                                    custom_id="yes"
+                                                    custom_id=f"yes-{uuid.uuid4()}"
                                                 ),
                                                 create_button(style=ButtonStyle.red,
                                                     label="No",
-                                                    custom_id="no"
+                                                    custom_id=f"no-{uuid.uuid4()}"
                                                 )
                                             )
-                await ctx.send("Are you sure you have already done this contract ?", components=[action_row], hidden=True)
-                answer: ComponentContext = await wait_for_component(self.bot, components=action_row)
-                if answer.custom_id == "no":
+                await ctx_send.send("Are you sure you have already done this contract ?", components=[action_row], hidden=True)
+                try:
+                    answer: ComponentContext = await wait_for_component(self.bot, components=action_row, timeout=10)
+                except asyncio.TimeoutError:
+                    await ctx_send.send("Action cancelled :negative_squared_cross_mark:", hidden=True)
+                    return
+                if answer.custom_id.startswith("no"):
                     await answer.send("Action cancelled :negative_squared_cross_mark:", hidden=True)
                     return
                 else:
