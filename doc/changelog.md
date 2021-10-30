@@ -1,3 +1,17 @@
+# v1.3.4
+
+**Changes:**
+
+- Improved admin command to modify data files
+- Clicking a second time on the already done button puts you back in remaining, unless it says in the bot's archive you have indeed done the contratc before
+- Improved contract message readability
+- Added a 10s timeout to wait_for_component events
+- Allowing for admins to kick even when the coop is completed (when someone doesn't join the in-game coop)
+
+**Bugfixes:**
+
+- Fixed interfering button events when multiple wait_for_component are waiting at the same time
+
 # v1.3.3
 
 **Changes:**
