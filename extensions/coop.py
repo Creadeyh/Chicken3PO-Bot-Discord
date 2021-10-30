@@ -1172,49 +1172,99 @@ class Coop(commands.Cog):
                 ctx_send = ctx
 
             running_coops = utils.read_json("running_coops")
-            if author_id in running_coops[contract_id]["already_done"]:
-                await ctx_send.send("You already told me that :smile:", hidden=True)
-                return
             for coop in running_coops[contract_id]["coops"]:
                 if author_id in coop["members"]:
                     await ctx_send.send("You have already joined a coop for this contract :smile:", hidden=True)
                     return
             
-            # Updates running_coops JSON
-            if author_id in running_coops[contract_id]["remaining"]:
-                running_coops[contract_id]["remaining"].remove(author_id)
-            running_coops[contract_id]["already_done"].append(author_id)
+            async def update_contract_message():
+                already_done_mentions = []
+                for id in running_coops[contract_id]["already_done"]:
+                    already_done_mentions.append(await utils.get_member_mention(id, ctx.guild, self.bot))
+                remaining_mentions = []
+                for id in running_coops[contract_id]["remaining"]:
+                    remaining_mentions.append(await utils.get_member_mention(id, ctx.guild, self.bot))
+                
+                content = ctx.origin_message.content
+                index = content.index("**Already done:**")
+                new_content = (content[:index]
+                                + f"**Already done:** {''.join(already_done_mentions)}\n\n"
+                                + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
+                                )
+                await ctx.origin_message.edit(content=new_content)
 
-            # Notif to coop organizers
-            if len(running_coops[contract_id]["remaining"]) == 0:
-                await self.send_notif_no_remaining(ctx.guild, contract_id)
+            if author_id in running_coops[contract_id]["already_done"]:
+                # Removes the player from already done
+                
+                archive = utils.read_json("participation_archive")
+                for date, occurrence in archive[contract_id].items():
+                    if (
+                        date != running_coops[contract_id]["date"] and
+                        str(author_id) in occurrence["participation"].keys() and
+                        occurrence["participation"][str(author_id)] != "no"
+                    ):
+                        await ctx_send.send("I know from a trusted source you have done this contract :smile:", hidden=True)
+                        return
 
-            # Updates archive JSON
-            archive = utils.read_json("participation_archive")
-            archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(author_id)] = "leggacy"
+                # Updates running_coops JSON
+                running_coops[contract_id]["remaining"].append(author_id)
+                running_coops[contract_id]["already_done"].remove(author_id)
 
-            # Updates contract message
-            already_done_mentions = []
-            for id in running_coops[contract_id]["already_done"]:
-                already_done_mentions.append(await utils.get_member_mention(id, ctx.guild, self.bot))
-            remaining_mentions = []
-            for id in running_coops[contract_id]["remaining"]:
-                remaining_mentions.append(await utils.get_member_mention(id, ctx.guild, self.bot))
+                # Updates archive JSON
+                archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(author_id)] = "no"
+
+                await update_contract_message()
+
+                # Saves JSONs
+                utils.save_json("running_coops", running_coops)
+                utils.save_json("participation_archive", archive)
+
+                # Responds to the interaction
+                await ctx_send.send(f"Removed you from already done :white_check_mark:", hidden=True)
+
+            else:
+                # Adds the player to already done
             
-            content = ctx.origin_message.content
-            index = content.index("**Already done:**")
-            new_content = (content[:index]
-                            + f"**Already done:** {''.join(already_done_mentions)}\n\n"
-                            + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
-                            )
-            await ctx.origin_message.edit(content=new_content)
+                # Confirmation
+                action_row = create_actionrow(
+                                                create_button(style=ButtonStyle.green,
+                                                    label="Yes",
+                                                    custom_id="yes"
+                                                ),
+                                                create_button(style=ButtonStyle.red,
+                                                    label="No",
+                                                    custom_id="no"
+                                                )
+                                            )
+                await ctx.send("Are you sure you have already done this contract ?", components=[action_row], hidden=True)
+                answer: ComponentContext = await wait_for_component(self.bot, components=action_row)
+                if answer.custom_id == "no":
+                    await answer.send("Action cancelled :negative_squared_cross_mark:", hidden=True)
+                    return
+                else:
+                    ctx_send = answer
+            
+                # Updates running_coops JSON
+                if author_id in running_coops[contract_id]["remaining"]:
+                    running_coops[contract_id]["remaining"].remove(author_id)
+                running_coops[contract_id]["already_done"].append(author_id)
 
-            #Saves JSONs
-            utils.save_json("running_coops", running_coops)
-            utils.save_json("participation_archive", archive)
+                # Notif to coop organizers
+                if len(running_coops[contract_id]["remaining"]) == 0:
+                    await self.send_notif_no_remaining(ctx.guild, contract_id)
 
-            # Responds to the interaction
-            await ctx_send.send(f"Marked you as already done :white_check_mark:", hidden=True)
+                # Updates archive JSON
+                archive = utils.read_json("participation_archive")
+                archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(author_id)] = "leggacy"
+
+                await update_contract_message()
+
+                # Saves JSONs
+                utils.save_json("running_coops", running_coops)
+                utils.save_json("participation_archive", archive)
+
+                # Responds to the interaction
+                await ctx_send.send(f"Marked you as already done :white_check_mark:", hidden=True)
 
 
     ########################
