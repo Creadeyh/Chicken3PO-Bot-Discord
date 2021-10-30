@@ -173,8 +173,15 @@ class Coop(commands.Cog):
                         + f"*Contract ID:* `{contract_id}`\n"
                         + f"*Coop size:* {size}\n"
                         + "==============================\n\n"
-                        + (f"**Already done:** {''.join([await self.utils.get_member_mention(id, ctx.guild, self.bot) for id in already_done_ids])}\n\n" if is_leggacy else "")
-                        + f"**Remaining: ({len(remaining_ids)})** {''.join([await self.utils.get_member_mention(id, ctx.guild, self.bot) for id in remaining_ids])}\n "
+                        + (
+                            (
+                                f"**Already done:**\n{''.join([await self.utils.get_member_mention(id, ctx.guild, self.bot) for id in already_done_ids])}"
+                                + ("\n" if already_done_ids else "")
+                                + "\n"
+                            )
+                            if is_leggacy else ""
+                        )
+                        + f"**Remaining: ({len(remaining_ids)})**\n{''.join([await self.utils.get_member_mention(id, ctx.guild, self.bot) for id in remaining_ids])}\n"
                         )
         if is_leggacy:
             action_row = [create_actionrow(create_button(style=ButtonStyle.blurple, label="I've already done this contract", custom_id=f"leggacy_{contract_id}"))]
@@ -317,7 +324,7 @@ class Coop(commands.Cog):
         
         contract_message = await contract_channel.fetch_message(running_coops[contract_id]["message_id"])
         remaining_index = contract_message.content.index("**Remaining:")
-        new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
+        new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})**\n{''.join(remaining_mentions)}\n"
         await contract_message.edit(content=new_contract_content)
 
         # Saves JSON
@@ -619,7 +626,7 @@ class Coop(commands.Cog):
                 remaining_mentions.append(await self.utils.get_member_mention(id, ctx.guild, self.bot))
             
             remaining_index = contract_message.content.index("**Remaining:")
-            new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
+            new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})**\n{''.join(remaining_mentions)}\n"
             await contract_message.edit(content=new_contract_content)
 
             # Removes coop role to remove access to coop channel
@@ -1097,7 +1104,7 @@ class Coop(commands.Cog):
             channel = discord.utils.get(ctx.guild.channels, id=running_coops[contract_id]["channel_id"])
             contract_message = await channel.fetch_message(running_coops[contract_id]["message_id"])
             remaining_index = contract_message.content.index("**Remaining:")
-            new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
+            new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})**\n{''.join(remaining_mentions)}\n"
             await contract_message.edit(content=new_contract_content)
 
             # Updates coop message
@@ -1188,9 +1195,13 @@ class Coop(commands.Cog):
                 content = ctx.origin_message.content
                 index = content.index("**Already done:**")
                 new_content = (content[:index]
-                                + f"**Already done:** {''.join(already_done_mentions)}\n\n"
-                                + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
+                                + (
+                                    f"**Already done:**\n{''.join(already_done_mentions)}"
+                                    + ("\n" if already_done_mentions else "")
+                                    + "\n"
                                 )
+                                + f"**Remaining: ({len(remaining_mentions)})**\n{''.join(remaining_mentions)}\n"
+                            )
                 await ctx.origin_message.edit(content=new_content)
 
             if author_id in running_coops[contract_id]["already_done"]:
@@ -1431,7 +1442,7 @@ class Coop(commands.Cog):
             remaining_mentions.append(await self.utils.get_member_mention(id, guild, self.bot))
         
         remaining_index = contract_message.content.index("**Remaining:")
-        new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})** {''.join(remaining_mentions)}\n"
+        new_contract_content = contract_message.content[:remaining_index] + f"**Remaining: ({len(remaining_mentions)})**\n{''.join(remaining_mentions)}\n"
         await contract_message.edit(content=new_contract_content)
 
         # Saves JSONs
