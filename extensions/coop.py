@@ -571,11 +571,15 @@ class Coop(commands.Cog):
             if coop_nb <= 0 or coop_nb > len(running_coops[contract_id]["coops"]):
                 await ctx_send.send(":warning: Invalid coop number", hidden=True)
                 return
-            if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
-                await ctx_send.send(":warning: Coop is completed or failed", hidden=True)
-                return
             if member_id not in running_coops[contract_id]["coops"][coop_nb-1]["members"]:
                 await ctx_send.send(":warning: Member is not in this coop", hidden=True)
+                return
+            if (
+                running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]
+                and self.bot.owner_id != ctx.author.id
+                and not ctx.author.guild_permissions.administrator
+            ):
+                await ctx_send.send(":warning: Coop is completed or failed", hidden=True)
                 return
 
         is_author_creator = False
@@ -616,12 +620,7 @@ class Coop(commands.Cog):
                                                             other_members_mentions
                                                             )
 
-            action_row = [create_actionrow(create_button(style=ButtonStyle.red if coop_dic["locked"] else ButtonStyle.green,
-                                                        label="LOCKED" if coop_dic["locked"] else "Join",
-                                                        custom_id=f"joincoop_{contract_id}_{from_coop_nb}",
-                                                        disabled=coop_dic["locked"]
-                                                        ))]
-            await coop_message.edit(content=coop_content, embed=coop_embed, components=action_row)
+            await coop_message.edit(content=coop_content, embed=coop_embed)
 
             # Updates contract message
             contract_message = await channel.fetch_message(running_coops[contract_id]["message_id"])
@@ -669,7 +668,11 @@ class Coop(commands.Cog):
                 return
         else:
             if is_author_creator:
-                if running_coops[contract_id]["coops"][creator_coop_nb-1]["completed_or_failed"]:
+                if (
+                    running_coops[contract_id]["coops"][creator_coop_nb-1]["completed_or_failed"]
+                    and self.bot.owner_id != ctx.author.id
+                    and not ctx.author.guild_permissions.administrator
+                ):
                     await ctx_send.send(":warning: Coop is completed or failed", hidden=True)
                     return
                 if member == ctx.author:
