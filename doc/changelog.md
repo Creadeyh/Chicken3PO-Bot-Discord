@@ -1,9 +1,15 @@
+# v1.3.5
+
+**Bugfixes:**
+
+- Fixed issue where main account of somebody with an alt could not be kicked out of a coop
+
 # v1.3.4
 
 **Changes:**
 
 - Improved admin command to modify data files
-- Clicking a second time on the already done button puts you back in remaining, unless it says in the bot's archive you have indeed done the contratc before
+- Clicking a second time on the already done button puts you back in remaining, unless it says in the bot's archive you have indeed done the contract before
 - Improved contract message readability
 - Added a 10s timeout to wait_for_component events
 - Allowing for admins to kick even when the coop is completed (when someone doesn't join the in-game coop)

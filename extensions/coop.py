@@ -558,6 +558,8 @@ class Coop(commands.Cog):
                     return
                 if ctx_alt.custom_id.startswith("alt"):
                     member_id = "alt" + str(member.id)
+                else:
+                    member_id = member.id
                 ctx_send = ctx_alt
         else:
             member_id = member.id
