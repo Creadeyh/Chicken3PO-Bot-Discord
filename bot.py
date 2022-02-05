@@ -1,78 +1,102 @@
-import discord
-from discord.ext import commands
-from discord_slash import SlashCommand
-from discord_slash.context import *
-from discord_slash.error import CheckFailure
+import discord as dpy
+from discord.ext import commands as dpy_commands
+import interactions
+
+import extensions.utils as utils
 
 import json
+import asyncio
 
+#region Inits
 
-##### Inits #####
-
-intents = discord.Intents.default()
-intents.members = True
+dpy_intents = dpy.Intents.default()
+dpy_intents.members = True
+intents = interactions.Intents.DEFAULT | interactions.Intents.GUILD_MEMBERS
+# act_list = []
+# act_list.append(interactions.PresenceActivity(name="Message", details="Egg Inc with Wall-Egg | /help"))
+# presence = interactions.Presence(activities=act_list)
 
 with open("config.json", "r") as f:
     config = json.load(f)
     TOKEN = config["TOKEN"]
     COMMAND_PREFIX = config["COMMAND_PREFIX"]
 
-bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents)
-slash = SlashCommand(bot, sync_commands=True, sync_on_cog_reload=True)
+dpy_bot = dpy_commands.Bot(command_prefix=COMMAND_PREFIX, intents=dpy_intents)
+bot = interactions.Client(token=TOKEN, intents=intents)
 
-bot.load_extension("extensions.utils")
-bot.load_extension("extensions.user_utils")
-bot.load_extension("extensions.coop")
-coop = bot.get_cog("Coop")
-user_utils = bot.get_cog("UserUtils")
-utils = bot.get_cog("Utils")
+# TODO Cogs with interactions 4.1
+# dpy_bot.load_extension("extensions.user_utils")
+# dpy_bot.load_extension("extensions.coop")
+# coop = dpy_bot.get_cog("Coop")
+# user_utils = dpy_bot.get_cog("UserUtils")
 
+#endregion
 
-#######################
-##### Main events #####
-#######################
+#region Main Events
 
-@bot.event
+@dpy_bot.event
 async def on_ready():
-    await bot.change_presence(activity=discord.Game("Egg Inc with Wall-Egg | /help"))
+    await dpy_bot.change_presence(activity=dpy.Game("Egg Inc with Wall-Egg | /help"))
     print("Bot is ready")
 
 async def reload_extensions():
-    bot.reload_extension("extensions.utils")
-    bot.reload_extension("extensions.user_utils")
-    bot.reload_extension("extensions.coop")
+    print()
+    # dpy_bot.reload_extension("extensions.user_utils")
+    # dpy_bot.reload_extension("extensions.coop")
 
 @bot.event
-async def on_guild_join(guild):
+async def on_guild_create(guild: interactions.Guild):
     with open("config.json", "r") as f:
         config = json.load(f)
-    config["guilds"][str(guild.id)] = {
-        "BOT_CHANNEL_ID": "",
-        "COOPS_BEFORE_AFK": 3,
-        "GUEST_ROLE_ID": "",
-        "KEEP_COOP_CHANNELS": False,
-        "USE_EMBEDS": True
-        }
-    with open("config.json", "w") as f:
-        json.dump(config, f, indent=4)
-    await reload_extensions()
+    if str(guild.id) not in config["guilds"].keys(): 
+        # New guild registration
+
+        # Config file
+        config["guilds"][str(guild.id)] = {
+            "COOPS_BEFORE_AFK": 3,
+            "GUEST_ROLE_ID": "",
+            "KEEP_COOP_CHANNELS": False,
+            "USE_EMBEDS": True
+            }
+        with open("config.json", "w") as f:
+            json.dump(config, f, indent=4)
+        await reload_extensions()
+        
+        # Fix if working with interactions <= 4.0.2 (fixed in unstable)
+        # guild.roles = [interactions.Role(**role, _client=bot._http) for role in guild.roles]
+
+        # Creates Coop Organizer, Coop Creator, AFK and Alt roles if not exist
+        coop_role = [role for role in guild.roles if role.name == "Coop Organizer"]
+        creator_role = [role for role in guild.roles if role.name == "Coop Creator"]
+        afk_role = [role for role in guild.roles if role.name == "AFK"]
+        alt_role = [role for role in guild.roles if role.name == "Alt"]
+
+        if not coop_role:
+            await guild.create_role(name="Coop Organizer", mentionable=True, reason="Chicken3PO feature")
+        if not creator_role:
+            await guild.create_role(name="Coop Creator", reason="Chicken3PO feature")
+        if not afk_role:
+            await guild.create_role(name="AFK", reason="Chicken3PO feature")
+        if not alt_role:
+            await guild.create_role(name="Alt", reason="Chicken3PO feature")
 
 @bot.event
-async def on_guild_remove(guild):
-    with open("config.json", "r") as f:
-        config = json.load(f)
-    config["guilds"].pop(str(guild.id))
-    with open("config.json", "w") as f:
-        json.dump(config, f, indent=4)
-    await reload_extensions()
+async def on_guild_member_remove(member: interactions.GuildMembers):
+    if int(member.user.id) == int(bot.me.id):
+        with open("config.json", "r") as f:
+            config = json.load(f)
+        if str(member.guild_id) in config["guilds"].keys():
+            config["guilds"].pop(str(member.guild_id))
+            with open("config.json", "w") as f:
+                json.dump(config, f, indent=4)
+            await reload_extensions()
 
+#endregion
 
-##########################
-##### Owner commands #####
-##########################
+#region Owner Commands
 
-@bot.command(name="reloadext")
-@commands.is_owner()
+@dpy_bot.command(name="reloadext")
+@dpy_commands.is_owner()
 async def reload_extensions_command(ctx):
     try:
         await reload_extensions()
@@ -82,8 +106,8 @@ async def reload_extensions_command(ctx):
     else:
         await ctx.send("All extensions have been reloaded :arrows_counterclockwise:")
 
-@bot.command(name="serverlist")
-@commands.is_owner()
+@dpy_bot.command(name="serverlist")
+@dpy_commands.is_owner()
 async def get_server_list(ctx):
 
     dm_channel = ctx.author.dm_channel
@@ -92,15 +116,15 @@ async def get_server_list(ctx):
         dm_channel = ctx.author.dm_channel
 
     liste = {}
-    for guild in bot.guilds:
+    for guild in dpy_bot.guilds:
         liste[guild.name] = guild.id
     await dm_channel.send(liste)
 
-@bot.command(name="removeserver")
-@commands.is_owner()
+@dpy_bot.command(name="removeserver")
+@dpy_commands.is_owner()
 async def remove_from_server(ctx, id):
     try:
-        guild = await bot.fetch_guild(id)
+        guild = await dpy_bot.fetch_guild(id)
         await guild.leave()
     except Exception as inst:
         await ctx.send(f"Administrative error (#2) :confounded:\n```{type(inst)}\n{inst}```")
@@ -108,8 +132,8 @@ async def remove_from_server(ctx, id):
     else:
         await ctx.send(f"Left {guild.name} :wink:")
 
-@bot.command(name="getdatafile")
-@commands.is_owner()
+@dpy_bot.command(name="getdatafile")
+@dpy_commands.is_owner()
 async def get_data_file(ctx, filename):
 
     dm_channel = ctx.author.dm_channel
@@ -119,13 +143,13 @@ async def get_data_file(ctx, filename):
     
     try:
         with open(f"data/{filename}.json", "rb") as f:
-            await dm_channel.send(file=discord.File(f))
+            await dm_channel.send(file=dpy.File(f))
     except Exception as inst:
         await ctx.send(f"Administrative error (#3) :confounded:\n```{type(inst)}\n{inst}```")
         return
 
-@bot.command(name="modifydatafile")
-@commands.is_owner()
+@dpy_bot.command(name="modifydatafile")
+@dpy_commands.is_owner()
 async def modify_data_file(ctx, filename, key_path, value = None):
 
     try:
@@ -160,73 +184,44 @@ async def modify_data_file(ctx, filename, key_path, value = None):
         await ctx.send(f"Administrative error (#4) :confounded:\n```{type(inst)}\n{inst}```")
         return
 
+#endregion
 
-##########################
-##### Command events #####
-##########################
+# TODO on_slash_command_error re-implement elsewhere
+#region Command Events
 
-@bot.event
+@dpy_bot.event
 async def on_command_error(ctx, error):
-    if isinstance(error, commands.MissingRequiredArgument):
+    if isinstance(error, dpy_commands.MissingRequiredArgument):
         await ctx.send("Something is missing from this command :thinking:")
     else:
         print(error)
 
-@bot.event
-async def on_slash_command_error(ctx, error):
-    if isinstance(error, CheckFailure):
-        if any(substring in ctx.name for substring in ["Remove contract", "Coop completed", "Coop failed"]):
-            await ctx.send("Unauthorized target message :no_entry_sign:", hidden=True)
-        elif discord.utils.get(ctx.guild.roles, name="AFK") in ctx.author.roles:
-            await ctx.send("Unauthorized command as AFK :no_entry_sign:", hidden=True)
-        else:
-            await ctx.send("Unauthorized channel for this command :no_entry_sign:", hidden=True)
-    elif isinstance(error, commands.CheckAnyFailure):
-        await ctx.send("Unauthorized command :no_entry_sign:", hidden=True)
-    else:
-        print(error)
+# @bot.event
+# async def on_slash_command_error(ctx, error):
+#     if isinstance(error, CheckFailure):
+#         if any(substring in ctx.name for substring in ["Remove contract", "Coop completed", "Coop failed"]):
+#             await ctx.send("Unauthorized target message :no_entry_sign:", hidden=True)
+#         elif discord.utils.get(ctx.guild.roles, name="AFK") in ctx.author.roles:
+#             await ctx.send("Unauthorized command as AFK :no_entry_sign:", hidden=True)
+#         else:
+#             await ctx.send("Unauthorized channel for this command :no_entry_sign:", hidden=True)
+#     elif isinstance(error, commands.CheckAnyFailure):
+#         await ctx.send("Unauthorized command :no_entry_sign:", hidden=True)
+#     else:
+#         print(error)
 
+#endregion
 
-#########################
-##### Setup Command #####
-#########################
+#region Client Start
 
-@bot.command()
-@commands.guild_only()
-@commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True))
-async def setuphere(ctx):
-    """
-    Bot init within the server
-    """
-    with open("config.json", "r") as f:
-        config = json.load(f)
-    config["guilds"][str(ctx.guild.id)]["BOT_CHANNEL_ID"] = ctx.channel.id
-    with open("config.json", "w") as f:
-        json.dump(config, f, indent=4)
-    await ctx.send(f"Bot commands channel set as {ctx.channel.mention}")
+dpy_bot.remove_command("help")
 
-    # Creates Coop Organizer, Coop Creator, AFK and Alt roles if not exist
-    coop_role = discord.utils.get(ctx.guild.roles, name="Coop Organizer")
-    creator_role = discord.utils.get(ctx.guild.roles, name="Coop Creator")
-    afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
-    alt_role = discord.utils.get(ctx.guild.roles, name="Alt")
+loop = asyncio.get_event_loop()
 
-    if not coop_role:
-        await ctx.guild.create_role(name="Coop Organizer", mentionable=True)
-        await ctx.send("Coop Organizer role created")
-    if not creator_role:
-        await ctx.guild.create_role(name="Coop Creator")
-        await ctx.send("Coop Creator role created")
-    if not afk_role:
-        await ctx.guild.create_role(name="AFK")
-        await ctx.send("AFK role created")
-    if not alt_role:
-        await ctx.guild.create_role(name="Alt")
-        await ctx.send("Alt role created")
+task2 = loop.create_task(dpy_bot.start(TOKEN, bot=True))
+task1 = loop.create_task(bot._ready())
 
-    await ctx.send("Bot setup done :white_check_mark:")
+gathered = asyncio.gather(task1, task2, loop=loop)
+loop.run_until_complete(gathered)
 
-bot.remove_command("help")
-
-
-bot.run(TOKEN)
+#endregion
