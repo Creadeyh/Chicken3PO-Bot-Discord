@@ -1351,9 +1351,12 @@ class Coop(commands.Cog):
                 date_dic[date].append(occurrence)
         # Sorts by date
         date_dic = dict(sorted(date_dic.items(), reverse=True))
-        # If members has not participated in last number of coops defined in COOPS_BEFORE_AFK (excluding already done leggacies), gives him AFK role
+        # If members has not participated in last number of archived coops defined in COOPS_BEFORE_AFK (excluding already done leggacies),
+        # and has not joined one of the running coops, gives him AFK role
         # Alt accounts are not taken into account
         for member in guild.members:
+            if self.utils.is_member_active_in_running_coops(member.id):
+                continue
             count = 0
             no_count = 0
             i = 0

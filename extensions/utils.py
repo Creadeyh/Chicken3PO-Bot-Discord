@@ -87,6 +87,15 @@ class Utils(commands.Cog):
         text = text + "> -------------------------"
         return text
 
+    @staticmethod
+    def is_member_active_in_running_coops(member_id):
+        running_coops = Utils.read_json("running_coops")
+        for contract in running_coops.values():
+            for coop in contract["coops"]:
+                if member_id in coop["members"]:
+                    return True
+        return False
+
 
 def setup(bot):
     bot.add_cog(Utils(bot))
