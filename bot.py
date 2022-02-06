@@ -211,20 +211,41 @@ async def setuphere(ctx):
     afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
     alt_role = discord.utils.get(ctx.guild.roles, name="Alt")
 
-    if not coop_role:
-        await ctx.guild.create_role(name="Coop Organizer", mentionable=True)
+    role_error = False
+    bot_role = discord.utils.get(ctx.guild.roles, name=bot.user.name)
+    if not bot_role:
+        await ctx.send("ERROR: Bot role not found")
+        return
+    
+    if coop_role and coop_role.position > bot_role.position:
+        role_error = True
+        await ctx.send("Please move the Coop Organizer below the bot role")
+    elif not coop_role:
+        coop_role = await ctx.guild.create_role(name="Coop Organizer", mentionable=True)
         await ctx.send("Coop Organizer role created")
-    if not creator_role:
-        await ctx.guild.create_role(name="Coop Creator")
+    if creator_role and creator_role.position > bot_role.position:
+        role_error = True
+        await ctx.send("Please move the Coop Creator below the bot role")
+    elif not creator_role:
+        creator_role = await ctx.guild.create_role(name="Coop Creator")
         await ctx.send("Coop Creator role created")
-    if not afk_role:
-        await ctx.guild.create_role(name="AFK")
+    if afk_role and afk_role.position > bot_role.position:
+        role_error = True
+        await ctx.send("Please move the AFK below the bot role")
+    elif not afk_role:
+        afk_role = await ctx.guild.create_role(name="AFK")
         await ctx.send("AFK role created")
-    if not alt_role:
-        await ctx.guild.create_role(name="Alt")
+    if alt_role and alt_role.position > bot_role.position:
+        role_error = True
+        await ctx.send("Please move the Alt below the bot role")
+    elif not alt_role:
+        alt_role = await ctx.guild.create_role(name="Alt")
         await ctx.send("Alt role created")
 
-    await ctx.send("Bot setup done :white_check_mark:")
+    if role_error:
+        await ctx.send("Bot setup incomplete, please make changes and retry :x:")
+    else:
+        await ctx.send("Bot setup done :white_check_mark:")
 
 bot.remove_command("help")
 
