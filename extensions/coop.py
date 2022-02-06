@@ -622,7 +622,20 @@ class Coop(commands.Cog):
                                                             other_members_mentions
                                                             )
 
-            await coop_message.edit(content=coop_content, embed=coop_embed)
+            if coop_dic["locked"]:
+                action_row = [create_actionrow(create_button(style=ButtonStyle.red,
+                                                            label="LOCKED",
+                                                            custom_id=f"joincoop_{contract_id}_{from_coop_nb}",
+                                                            disabled=True
+                                                            ))]
+            else:
+                action_row = [create_actionrow(create_button(style=ButtonStyle.green,
+                                                            label="Join",
+                                                            custom_id=f"joincoop_{contract_id}_{from_coop_nb}",
+                                                            disabled=False
+                                                            ))]
+
+            await coop_message.edit(content=coop_content, embed=coop_embed, components=action_row)
 
             # Updates contract message
             contract_message = await channel.fetch_message(running_coops[contract_id]["message_id"])
