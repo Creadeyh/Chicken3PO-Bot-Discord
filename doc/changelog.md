@@ -1,3 +1,12 @@
+# v1.3.6
+
+**Bugfixes:**
+
+- Fixed the state of the coop join button after kicking someone from a full coop
+- Fixed the multiple pings to Coop Organizer when remaining list is empty and AFK joins
+- Fixed the AFK role attribution: doesn't give it back if player has just joined a running coop
+- On setup, now asking to move the Coop Organizer, Coop Creator, AFK and Alt roles below the bot role if they already exist
+
 # v1.3.5
 
 **Bugfixes:**
