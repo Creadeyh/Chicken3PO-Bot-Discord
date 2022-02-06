@@ -1105,6 +1105,7 @@ class Coop(commands.Cog):
                     await ctx_send.send("You have already joined a coop for this contract :smile:", hidden=True)
                     return
             
+            prev_remaining_count = len(running_coops[contract_id]["remaining"])
             # If AFK and joins a coop, removes AFK role
             if author_id not in running_coops[contract_id]["remaining"]:
                 afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
@@ -1115,8 +1116,8 @@ class Coop(commands.Cog):
                 running_coops[contract_id]["remaining"].remove(author_id)
             running_coops[contract_id]["coops"][coop_nb-1]["members"].append(author_id)
 
-            # Notif to coop organizers
-            if len(running_coops[contract_id]["remaining"]) == 0:
+            # Notif to coop organizers, only if remaining wasn't already empty
+            if len(running_coops[contract_id]["remaining"]) == 0 and prev_remaining_count > 0:
                 await self.send_notif_no_remaining(ctx.guild, contract_id)
 
             # Updates archive JSON
