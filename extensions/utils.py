@@ -72,3 +72,10 @@ def get_coop_content(coop_nb, contract_size, creator_mention = None, other_membe
     text = text + "> -------------------------"
     return text
 
+def is_member_active_in_running_coops(member_id):
+    running_coops = read_json("running_coops")
+    for contract in running_coops.values():
+        for coop in contract["coops"]:
+            if member_id in coop["members"]:
+                return True
+    return False

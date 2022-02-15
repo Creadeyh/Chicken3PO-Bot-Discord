@@ -62,6 +62,9 @@ async def on_guild_create(guild: interactions.Guild):
             json.dump(config, f, indent=4)
         await reload_extensions()
         
+        data = await bot._http.get_channel(guild.system_channel_id)
+        main_channel = interactions.Channel(**data, _client=bot._http)
+
         # Fix if working with interactions <= 4.0.2 (fixed in unstable)
         # guild.roles = [interactions.Role(**role, _client=bot._http) for role in guild.roles]
 
@@ -71,14 +74,41 @@ async def on_guild_create(guild: interactions.Guild):
         afk_role = [role for role in guild.roles if role.name == "AFK"]
         alt_role = [role for role in guild.roles if role.name == "Alt"]
 
-        if not coop_role:
-            await guild.create_role(name="Coop Organizer", mentionable=True, reason="Chicken3PO feature")
-        if not creator_role:
-            await guild.create_role(name="Coop Creator", reason="Chicken3PO feature")
-        if not afk_role:
-            await guild.create_role(name="AFK", reason="Chicken3PO feature")
-        if not alt_role:
-            await guild.create_role(name="Alt", reason="Chicken3PO feature")
+        role_error = False
+        bot_role = [role for role in guild.roles if role.name == bot.me.name]
+        if not bot_role:
+            await main_channel.send("ERROR: Bot role not found")
+            return
+
+        if coop_role and coop_role.position > bot_role.position:
+            role_error = True
+            await main_channel.send("Please move the Coop Organizer below the bot role")
+        elif not coop_role:
+            coop_role = await guild.create_role(name="Coop Organizer", mentionable=True, reason="Chicken3PO feature")
+            await main_channel.send("Coop Organizer role created")
+        if creator_role and creator_role.position > bot_role.position:
+            role_error = True
+            await main_channel.send("Please move the Coop Creator below the bot role")
+        elif not creator_role:
+            creator_role = await guild.create_role(name="Coop Creator", reason="Chicken3PO feature")
+            await main_channel.send("Coop Creator role created")
+        if afk_role and afk_role.position > bot_role.position:
+            role_error = True
+            await main_channel.send("Please move the AFK below the bot role")
+        elif not afk_role:
+            afk_role = await guild.create_role(name="AFK", reason="Chicken3PO feature")
+            await main_channel.send("AFK role created")
+        if alt_role and alt_role.position > bot_role.position:
+            role_error = True
+            await main_channel.send("Please move the Alt below the bot role")
+        elif not alt_role:
+            alt_role = await guild.create_role(name="Alt", reason="Chicken3PO feature")
+            await main_channel.send("Alt role created")
+        
+        if role_error:
+            await main_channel.send("Bot setup incomplete, please make changes and retry :x:")
+        else:
+            await main_channel.send("Bot setup done :white_check_mark:")
 
 @bot.event
 async def on_guild_member_remove(member: interactions.GuildMembers):
