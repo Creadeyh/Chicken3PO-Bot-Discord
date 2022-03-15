@@ -1,5 +1,11 @@
-from discord.ext import commands as dpy_commands
+import discord as pycord
+from discord.ext import commands as pycord_commands
 import interactions
+from interactions import CommandContext, ComponentContext
+from interactions.api.models.member import Member
+from interactions.ext.wait_for import *
+
+import extensions.utils as utils
 
 import json
 
@@ -12,16 +18,104 @@ with open("config.json", "r") as f:
 
 class Commands(interactions.Extension):
 
-    def __init__(self, bot):
-        self.bot = bot
+    def __init__(self, bot, pycord_bot):
+        self.bot: interactions.Client = bot
+        self.pycord_bot: pycord_commands.Bot = pycord_bot
+    
+    #region Alt account commands
 
-    #region Contract commands
+    @interactions.extension_command(
+        name="register-alt",
+        description="Registers an alt EggInc account for the Discord account",
+        scope=GUILD_IDS,
+        options=[
+            interactions.Option(
+                name="member",
+                description="The Discord account",
+                type=interactions.OptionType.USER,
+                required=True
+            ),
+            interactions.Option(
+                name="name_main",
+                description="The EggInc name of the main account",
+                type=interactions.OptionType.STRING,
+                required=True
+            ),
+            interactions.Option(
+                name="name_alt",
+                description="The EggInc name of the alt account",
+                type=interactions.OptionType.STRING,
+                required=True
+            )
+        ])
+    # TODO Owner and admin permissions
+    async def register_alt_account(self, ctx: ComponentContext, member: Member, name_main: str, name_alt: str):
+        
+        if type(member) != Member:
+            await ctx.send(":warning: This user is not in the guild", ephemeral=True)
+            return
+
+        interac_guild = await ctx.get_guild()
+        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+
+        pycord_member: pycord.Member = ctx_guild.get_member(int(member.id))
+        alt_role = pycord.utils.get(ctx_guild.roles, name="Alt")
+        if alt_role in pycord_member.roles:
+            await ctx.send(":warning: This user already has an alt account", ephemeral=True)
+            return
+
+        await pycord_member.add_roles(alt_role)
+
+        alt_dic = utils.read_json("alt_index")
+        alt_dic[str(pycord_member.id)] = {
+            "main": name_main,
+            "alt": name_alt
+        }
+        utils.save_json("alt_index", alt_dic)
+
+        await ctx.send("Alt account registered :white_check_mark:", ephemeral=True)
+
+    @interactions.extension_command(
+        name="unregister-alt",
+        description="Unregisters the alt EggInc account for the Discord account",
+        scope=GUILD_IDS,
+        options=[
+            interactions.Option(
+                name="member",
+                description="The Discord account",
+                type=interactions.OptionType.USER,
+                required=True
+            )
+        ])
+    # TODO Owner and admin permissions
+    async def unregister_alt_account(self, ctx: ComponentContext, member: Member):
+
+        if type(member) != Member:
+            await ctx.send(":warning: This user is not in the guild", ephemeral=True)
+            return
+        
+        interac_guild = await ctx.get_guild()
+        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+
+        pycord_member: pycord.Member = ctx_guild.get_member(int(member.id))
+        alt_role = utils.get(ctx_guild.roles, name="Alt")
+        if alt_role not in pycord_member.roles:
+            await ctx.send(":warning: This user has no alt account", ephemeral=True)
+            return
+
+        await pycord_member.remove_roles(alt_role)
+
+        alt_dic = utils.read_json("alt_index")
+        alt_dic.pop(str(member.id))
+        utils.save_json("alt_index", alt_dic)
+
+        await ctx.send("Alt account unregistered :white_check_mark:", ephemeral=True)
 
     #endregion
-    
+
     #region Misc Commands
 
-    @command(
+    @interactions.extension_command(
         name="settings",
         description="Changes a setting value of the bot for the guild",
         scope=GUILD_IDS,
@@ -59,7 +153,7 @@ class Commands(interactions.Extension):
         ]
     )
     # TODO Owner and admin permissions
-    async def settings(self, ctx: interactions.CommandContext, setting: str, value):
+    async def settings(self, ctx: CommandContext, setting: str, value):
 
         if setting in ["COOPS_BEFORE_AFK", "GUEST_ROLE_ID"]:
             try:
@@ -84,13 +178,13 @@ class Commands(interactions.Extension):
 
         await ctx.send(f"Changed the value of {setting} to {value} :white_check_mark:", ephemeral=True)
 
-    @command(
+    @interactions.extension_command(
         name="help",
-        description="Command help",
+        description="Help command",
         scope=GUILD_IDS
     )
-    # TODO Redo with new commands and better layout
-    async def help(self, ctx: interactions.CommandContext):
+    # TODO Redo with better layout
+    async def help(self, ctx: CommandContext):
         await ctx.send("__**Chicken3PO Commands**__\n\n", ephemeral=True)
 
         await ctx.send("`&setuphere`\n" +
@@ -176,6 +270,5 @@ class Commands(interactions.Extension):
 
     #endregion
 
-
-def setup(bot):
-    Commands(bot)
+def setup(bot, pycord_bot):
+    Commands(bot, pycord_bot)

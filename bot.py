@@ -1,5 +1,5 @@
-import discord as dpy
-from discord.ext import commands as dpy_commands
+import discord as pycord
+from discord.ext import commands as pycord_commands
 import interactions
 
 import extensions.utils as utils
@@ -9,34 +9,29 @@ import asyncio
 
 #region Inits
 
-dpy_intents = dpy.Intents.default()
-dpy_intents.members = True
+pycord_intents = pycord.Intents.default()
+pycord_intents.members = True
 intents = interactions.Intents.DEFAULT | interactions.Intents.GUILD_MEMBERS
-# act_list = []
-# act_list.append(interactions.PresenceActivity(name="Message", details="Egg Inc with Wall-Egg | /help"))
-# presence = interactions.Presence(activities=act_list)
 
 with open("config.json", "r") as f:
     config = json.load(f)
     TOKEN = config["TOKEN"]
     COMMAND_PREFIX = config["COMMAND_PREFIX"]
 
-dpy_bot = dpy_commands.Bot(command_prefix=COMMAND_PREFIX, intents=dpy_intents)
+pycord_bot = pycord_commands.Bot(command_prefix=COMMAND_PREFIX, intents=pycord_intents)
 bot = interactions.Client(token=TOKEN, intents=intents)
 
-# TODO Cogs with interactions 4.1
-# dpy_bot.load_extension("extensions.user_utils")
-# dpy_bot.load_extension("extensions.coop")
-# coop = dpy_bot.get_cog("Coop")
-# user_utils = dpy_bot.get_cog("UserUtils")
+bot.load("extensions.commands", None, pycord_bot)
+bot.load("extensions.contract", None, pycord_bot)
+# bot.load("extensions.coop", None, pycord_bot)
 
 #endregion
 
 #region Main Events
 
-@dpy_bot.event
+@pycord_bot.event
 async def on_ready():
-    await dpy_bot.change_presence(activity=dpy.Game("Egg Inc with Wall-Egg | /help"))
+    await pycord_bot.change_presence(activity=pycord.Game("Egg Inc with Wall-Egg | /help"))
     print("Bot is ready")
 
 async def reload_extensions():
@@ -125,8 +120,8 @@ async def on_guild_member_remove(member: interactions.GuildMembers):
 
 #region Owner Commands
 
-@dpy_bot.command(name="reloadext")
-@dpy_commands.is_owner()
+@pycord_bot.command(name="reloadext")
+@pycord_commands.is_owner()
 async def reload_extensions_command(ctx):
     try:
         await reload_extensions()
@@ -136,8 +131,8 @@ async def reload_extensions_command(ctx):
     else:
         await ctx.send("All extensions have been reloaded :arrows_counterclockwise:")
 
-@dpy_bot.command(name="serverlist")
-@dpy_commands.is_owner()
+@pycord_bot.command(name="serverlist")
+@pycord_commands.is_owner()
 async def get_server_list(ctx):
 
     dm_channel = ctx.author.dm_channel
@@ -146,15 +141,15 @@ async def get_server_list(ctx):
         dm_channel = ctx.author.dm_channel
 
     liste = {}
-    for guild in dpy_bot.guilds:
+    for guild in pycord_bot.guilds:
         liste[guild.name] = guild.id
     await dm_channel.send(liste)
 
-@dpy_bot.command(name="removeserver")
-@dpy_commands.is_owner()
+@pycord_bot.command(name="removeserver")
+@pycord_commands.is_owner()
 async def remove_from_server(ctx, id):
     try:
-        guild = await dpy_bot.fetch_guild(id)
+        guild = await pycord_bot.fetch_guild(id)
         await guild.leave()
     except Exception as inst:
         await ctx.send(f"Administrative error (#2) :confounded:\n```{type(inst)}\n{inst}```")
@@ -162,8 +157,8 @@ async def remove_from_server(ctx, id):
     else:
         await ctx.send(f"Left {guild.name} :wink:")
 
-@dpy_bot.command(name="getdatafile")
-@dpy_commands.is_owner()
+@pycord_bot.command(name="getdatafile")
+@pycord_commands.is_owner()
 async def get_data_file(ctx, filename):
 
     dm_channel = ctx.author.dm_channel
@@ -173,13 +168,13 @@ async def get_data_file(ctx, filename):
     
     try:
         with open(f"data/{filename}.json", "rb") as f:
-            await dm_channel.send(file=dpy.File(f))
+            await dm_channel.send(file=pycord.File(f))
     except Exception as inst:
         await ctx.send(f"Administrative error (#3) :confounded:\n```{type(inst)}\n{inst}```")
         return
 
-@dpy_bot.command(name="modifydatafile")
-@dpy_commands.is_owner()
+@pycord_bot.command(name="modifydatafile")
+@pycord_commands.is_owner()
 async def modify_data_file(ctx, filename, key_path, value = None):
 
     try:
@@ -219,9 +214,9 @@ async def modify_data_file(ctx, filename, key_path, value = None):
 # TODO on_slash_command_error re-implement elsewhere
 #region Command Events
 
-@dpy_bot.event
+@pycord_bot.event
 async def on_command_error(ctx, error):
-    if isinstance(error, dpy_commands.MissingRequiredArgument):
+    if isinstance(error, pycord_commands.MissingRequiredArgument):
         await ctx.send("Something is missing from this command :thinking:")
     else:
         print(error)
@@ -244,11 +239,11 @@ async def on_command_error(ctx, error):
 
 #region Client Start
 
-dpy_bot.remove_command("help")
+pycord_bot.remove_command("help")
 
 loop = asyncio.get_event_loop()
 
-task2 = loop.create_task(dpy_bot.start(TOKEN, bot=True))
+task2 = loop.create_task(pycord_bot.start(TOKEN, bot=True))
 task1 = loop.create_task(bot._ready())
 
 gathered = asyncio.gather(task1, task2, loop=loop)
