@@ -1,4 +1,6 @@
-import discord
+import discord as pycord
+import interactions
+
 import json
 
 #region JSON Utils
@@ -26,7 +28,7 @@ def save_json(name, dic):
 
 #endregion
 
-async def get_member_mention(member_id, guild, bot):
+async def get_member_mention(member_id, guild: pycord.Guild, bot: pycord.Client):
     # Id is an alt account
     if str(member_id).startswith("alt"):
         alt_dic = read_json("alt_index")
@@ -36,14 +38,14 @@ async def get_member_mention(member_id, guild, bot):
     elif member_id not in [mem.id for mem in guild.members]:
         return (await bot.fetch_user(member_id)).mention
     # Reference to main account if member has an alt
-    elif discord.utils.get(guild.roles, name="Alt") in guild.get_member(member_id).roles:
+    elif pycord.utils.get(guild.roles, name="Alt") in guild.get_member(member_id).roles:
         alt_dic = read_json("alt_index")
         return guild.get_member(member_id).mention + f"({alt_dic[str(member_id)]['main']})"
     # Member is in the guild and doesn't have an alt
     else:
         return guild.get_member(member_id).mention
 
-def get_coop_embed(coop_nb, contract_size, creator_mention = None, other_members_mentions = [], color = discord.Color.random()):
+def get_coop_embed(coop_nb, contract_size, creator_mention = None, other_members_mentions = [], color = pycord.Color.random()):
 
     if creator_mention:
         title = f"Coop {coop_nb} - {len(other_members_mentions)+1}/{contract_size}{' FULL' if (len(other_members_mentions)+1) == contract_size else ''}"
@@ -53,8 +55,11 @@ def get_coop_embed(coop_nb, contract_size, creator_mention = None, other_members
     else:
         title = f"Coop {coop_nb}"
         desc = ""
+
+    rgb_tuple = color.to_rgb()
+    int_color = (rgb_tuple[0]*65536) + (rgb_tuple[1]*256) + rgb_tuple[2]
     
-    return discord.Embed(color=color, title=title, description=desc)
+    return interactions.Embed(title=title, color=int_color, description=desc)
 
 def get_coop_content(coop_nb, contract_size, creator_mention = None, other_members_mentions = []):
 
