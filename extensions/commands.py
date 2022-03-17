@@ -2,8 +2,6 @@ import discord as pycord
 from discord.ext import commands as pycord_commands
 import interactions
 from interactions import CommandContext, ComponentContext
-from interactions.api.models.member import Member
-from interactions.ext.wait_for import *
 
 import extensions.utils as utils
 
@@ -49,9 +47,9 @@ class Commands(interactions.Extension):
             )
         ])
     # TODO Owner and admin permissions
-    async def register_alt_account(self, ctx: ComponentContext, member: Member, name_main: str, name_alt: str):
+    async def register_alt_account(self, ctx: ComponentContext, member: interactions.Member, name_main: str, name_alt: str):
         
-        if type(member) != Member:
+        if type(member) != interactions.Member:
             await ctx.send(":warning: This user is not in the guild", ephemeral=True)
             return
 
@@ -88,9 +86,9 @@ class Commands(interactions.Extension):
             )
         ])
     # TODO Owner and admin permissions
-    async def unregister_alt_account(self, ctx: ComponentContext, member: Member):
+    async def unregister_alt_account(self, ctx: ComponentContext, member: interactions.Member):
 
-        if type(member) != Member:
+        if type(member) != interactions.Member:
             await ctx.send(":warning: This user is not in the guild", ephemeral=True)
             return
         

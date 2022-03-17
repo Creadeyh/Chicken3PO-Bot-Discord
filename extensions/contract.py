@@ -4,10 +4,11 @@ import interactions
 from interactions import CommandContext, ComponentContext
 from interactions.ext.wait_for import *
 
-import extensions.utils as utils
+from extensions import checks, utils
 
 import json
 from datetime import date
+import uuid
 
 with open("config.json", "r") as f:
     config = json.load(f)
@@ -22,20 +23,7 @@ class Contract(interactions.Extension):
         self.bot: interactions.Client = bot
         self.pycord_bot: pycord_commands.Bot = pycord_bot
 
-    #region Check methods
-
-    def check_context_menu_target_contract():
-        def predicate(ctx):
-            running_coops = ctx.bot.get_cog("Utils").read_json("running_coops")
-            for contract in running_coops.values():
-                if ctx.target_message.id == contract["message_id"]:
-                    return True
-            return False
-        return pycord_commands.check(predicate)
-
-    #endregion
-
-    #region Slash commands
+    #region Slash commands (any channel)
 
     @interactions.extension_command(
         name="contract",
@@ -70,7 +58,6 @@ class Contract(interactions.Extension):
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
         ctx_channel = await ctx_guild.get_channel(int(ctx.channel_id))
-
 
         if contract_id in running_coops.keys():
             await ctx.send(":warning: Contract already exists", ephemeral=True)
@@ -200,25 +187,23 @@ class Contract(interactions.Extension):
         # Responds to the interaction
         await ctx.send("Contract registered :white_check_mark:", ephemeral=True)
 
+    #endregion
+
+    #region Slash commands (contract channels)
+
     @interactions.extension_command(
         name="contract-remove",
         description="If all coops are completed/failed, deletes the contract channel and category",
-        scope=GUILD_IDS,
-        options=[
-            interactions.Option(
-                name="contract_id",
-                description="The unique ID for an EggInc contract",
-                type=interactions.OptionType.STRING,
-                required=True
-            )
-        ])
+        scope=GUILD_IDS
+    )
     # TODO Owner, admin and coop organizer permissions
-    async def remove_contract_slash(self, ctx: CommandContext, contract_id: str):
+    async def remove_contract_slash(self, ctx: CommandContext):
+        
+        if not (contract_id := checks.check_contract_channel(int(ctx.channel_id))):
+            await ctx.send(":warning: Not a contract channel", ephemeral=True)
+            return
 
         running_coops = utils.read_json("running_coops")
-        if contract_id not in running_coops.keys():
-            await ctx.send(":warning: Contract does not exist", ephemeral=True)
-            return
 
         for coop in running_coops[contract_id]["coops"]:
             if not coop["completed_or_failed"]:
@@ -235,33 +220,20 @@ class Contract(interactions.Extension):
     @interactions.extension_command(
         name="codes",
         description="Sends the codes of currently running coops",
-        scope=GUILD_IDS,
-        options=[
-            interactions.Option(
-                name="contract_id",
-                description="The contract for which you want the coop codes. If not given, sends for all running contracts",
-                type=interactions.OptionType.STRING,
-                required=False
-            )
-        ])
+        scope=GUILD_IDS
+    )
     # TODO Owner, admin and coop organizer permissions
-    async def get_coop_codes(self, ctx: ComponentContext, contract_id: str=""):
+    async def get_coop_codes(self, ctx: ComponentContext):
 
-        running_coops = utils.read_json("running_coops")
-
-        if contract_id:
-            if contract_id not in running_coops.keys():
-                await ctx.send(":warning: Contract does not exist or is not currently running", ephemeral=True)
-                return
-            contract_ids = [contract_id]
-        else:
-            contract_ids = running_coops.keys()
+        if not (contract_id := checks.check_contract_channel(int(ctx.channel_id))):
+            await ctx.send(":warning: Not a contract channel", ephemeral=True)
+            return
         
-        message = "__**Coop codes:**__\n"
-        for id in contract_ids:
-            message = message + "\n" + f"**Contract `{id}`:**\n"
-            for i in range(len(running_coops[id]["coops"])):
-                message = message + f"- Coop {i+1}: `{running_coops[id]['coops'][i]['code']}`\n"
+        running_coops = utils.read_json("running_coops")
+        
+        message = f"__**Coop codes for `{contract_id}`:**__\n"
+        for i in range(len(running_coops[id]["coops"])):
+            message = message + f"- Coop {i+1}: `{running_coops[id]['coops'][i]['code']}`\n"
 
         await ctx.send(message, ephemeral=True)
 
@@ -274,15 +246,14 @@ class Contract(interactions.Extension):
         scope=GUILD_IDS,
         type=interactions.ApplicationCommandType.MESSAGE
     )
-    # TODO @check_context_menu_target_contract()
     # TODO Owner, admin and coop organizer permissions
     async def remove_contract_menu(self, ctx: ComponentContext):
         
-        running_coops = utils.read_json("running_coops")
+        if not (contract_id := checks.check_context_menu_contract_message(int(ctx.target.id))):
+            await ctx.send(":warning: Not a contract message", ephemeral=True)
+            return
 
-        for id in running_coops:
-            if int(ctx.target.id) == running_coops[id]["message_id"]:
-                contract_id = id
+        running_coops = utils.read_json("running_coops")
         
         for coop in running_coops[contract_id]["coops"]:
             if not coop["completed_or_failed"]:
@@ -293,6 +264,157 @@ class Contract(interactions.Extension):
         ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
         
         await self.execute_remove_contract(ctx_guild, contract_id)
+
+    #endregion
+
+    #region Events
+
+    @interactions.extension_command("on_component")
+    async def contract_already_done_event(self, ctx: ComponentContext):
+
+        # Already done leggacy button
+        if ctx.custom_id.startswith("leggacy_"):
+            contract_id = ctx.data.custom_id.split('_')[1]
+
+            interac_guild = await ctx.get_guild()
+            ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+            ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+
+            author_id = ctx_author.id
+
+            # Check for alt
+            alt_dic = utils.read_json("alt_index")
+            alt_role = pycord.utils.get(ctx_guild.roles, name="Alt")
+            if alt_role in ctx_author.roles:
+                action_row = interactions.ActionRow(
+                    interactions.Button(
+                        style=interactions.ButtonStyle.SECONDARY,
+                        label=f"{alt_dic[str(ctx_author.id)]['main']}",
+                        custom_id=f"main-{uuid.uuid4()}"
+                    ),
+                    interactions.Button(
+                        style=interactions.ButtonStyle.SECONDARY,
+                        label=f"{alt_dic[str(ctx_author.id)]['alt']}",
+                        custom_id=f"alt-{uuid.uuid4()}"
+                    )
+                )
+                await ctx.send("Which account has already done the contract ?", components=action_row, ephemeral=True)
+
+                try:
+                    ctx_alt: ComponentContext = await wait_for_component(self.bot, components=action_row, timeout=10)
+                except asyncio.TimeoutError:
+                    await ctx.send("Action cancelled :negative_squared_cross_mark:", ephemeral=True)
+                    return
+                if ctx_alt.custom_id.startswith("alt"):
+                    author_id = "alt" + str(ctx_author.id)
+                ctx_send = ctx_alt
+            else:
+                ctx_send = ctx
+
+            running_coops = utils.read_json("running_coops")
+            for coop in running_coops[contract_id]["coops"]:
+                if author_id in coop["members"]:
+                    await ctx_send.send("You have already joined a coop for this contract :smile:", ephemeral=True)
+                    return
+            
+            async def update_contract_message():
+                already_done_mentions = []
+                for id in running_coops[contract_id]["already_done"]:
+                    already_done_mentions.append(await utils.get_member_mention(id, ctx_guild, self.pycord_bot))
+                remaining_mentions = []
+                for id in running_coops[contract_id]["remaining"]:
+                    remaining_mentions.append(await utils.get_member_mention(id, ctx_guild, self.pycord_bot))
+                
+                content = ctx.message.content
+                index = content.index("**Already done:**")
+                new_content = (content[:index]
+                                + (
+                                    f"**Already done:**\n{''.join(already_done_mentions)}"
+                                    + ("\n" if already_done_mentions else "")
+                                    + "\n"
+                                )
+                                + f"**Remaining: ({len(remaining_mentions)})**\n{''.join(remaining_mentions)}\n"
+                            )
+                await ctx.message.edit(content=new_content, components=ctx.message.components)
+
+            if author_id in running_coops[contract_id]["already_done"]:
+                # Removes the player from already done
+                
+                archive = utils.read_json("participation_archive")
+                for date, occurrence in archive[contract_id].items():
+                    if (
+                        date != running_coops[contract_id]["date"] and
+                        str(author_id) in occurrence["participation"].keys() and
+                        occurrence["participation"][str(author_id)] != "no"
+                    ):
+                        await ctx_send.send("I know from a trusted source you have done this contract :smile:", ephemeral=True)
+                        return
+
+                # Updates running_coops JSON
+                running_coops[contract_id]["remaining"].append(author_id)
+                running_coops[contract_id]["already_done"].remove(author_id)
+
+                # Updates archive JSON
+                archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(author_id)] = "no"
+
+                await update_contract_message()
+
+                # Saves JSONs
+                utils.save_json("running_coops", running_coops)
+                utils.save_json("participation_archive", archive)
+
+                # Responds to the interaction
+                await ctx_send.send(f"Removed you from already done :white_check_mark:", ephemeral=True)
+
+            else:
+                # Adds the player to already done
+            
+                # Confirmation
+                action_row = interactions.ActionRow(
+                    interactions.Button(
+                        style=interactions.ButtonStyle.SUCCESS,
+                        label="Yes",
+                        custom_id=f"yes-{uuid.uuid4()}"
+                    ),
+                    interactions.Button(
+                        style=interactions.ButtonStyle.DANGER,
+                        label="No",
+                        custom_id=f"no-{uuid.uuid4()}"
+                    )
+                )
+                await ctx_send.send("Are you sure you have already done this contract ?", components=action_row, ephemeral=True)
+                try:
+                    answer: ComponentContext = await wait_for_component(self.bot, components=action_row, timeout=10)
+                except asyncio.TimeoutError:
+                    await ctx_send.send("Action cancelled :negative_squared_cross_mark:", ephemeral=True)
+                    return
+                if answer.custom_id.startswith("no"):
+                    await answer.send("Action cancelled :negative_squared_cross_mark:", ephemeral=True)
+                    return
+                else:
+                    ctx_send = answer
+            
+                # Updates running_coops JSON
+                if author_id in running_coops[contract_id]["remaining"]:
+                    running_coops[contract_id]["remaining"].remove(author_id)
+                running_coops[contract_id]["already_done"].append(author_id)
+
+                # Notif to coop organizers
+                if len(running_coops[contract_id]["remaining"]) == 0:
+                    await self.send_notif_no_remaining(ctx_guild, contract_id)
+
+                # Updates archive JSON
+                archive = utils.read_json("participation_archive")
+                archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(author_id)] = "leggacy"
+
+                await update_contract_message()
+
+                # Saves JSONs
+                utils.save_json("running_coops", running_coops)
+                utils.save_json("participation_archive", archive)
+
+                # Responds to the interaction
+                await ctx_send.send(f"Marked you as already done :white_check_mark:", ephemeral=True)
 
     #endregion
 
@@ -356,20 +478,31 @@ class Contract(interactions.Extension):
         # Saves running_coops JSON
         utils.save_json("running_coops", running_coops)
 
+    async def send_notif_no_remaining(self, guild: pycord.Guild, contract_id):
+        orga_role = pycord.utils.get(guild.roles, name="Coop Organizer")
+
+        running_coops = utils.read_json("running_coops")
+        contract_channel = pycord.utils.get(guild.channels, id=running_coops[contract_id]["channel_id"])
+        
+        await contract_channel.send(f"{orga_role.mention} Everyone has joined a coop for this contract :tada:")
+
     #endregion
 
-    @interactions.extension_command(
-        name="test",
-        description="Help command",
-        scope=GUILD_IDS
-    )
-    async def test(self, ctx: CommandContext):
-        button = interactions.Button(
-                style=interactions.ButtonStyle.PRIMARY,
-                label="test button",
-                custom_id="test_custom_id"
-            )
-        await ctx.send("test message", components=button)
+    # @interactions.extension_command(
+    #     name="test",
+    #     description="Help command",
+    #     scope=GUILD_IDS,
+    #     options=[
+    #         interactions.Option(
+    #             name="member",
+    #             description="Member selected",
+    #             type=interactions.OptionType.USER,
+    #             required=True
+    #         )
+    #     ]
+    # )
+    # async def test(self, ctx: CommandContext, member: interactions.Member):
+    #     print(member)
 
 def setup(bot, pycord_bot):
     Contract(bot, pycord_bot)
