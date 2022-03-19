@@ -50,8 +50,7 @@ async def on_guild_create(guild: interactions.Guild):
         config["guilds"][str(guild.id)] = {
             "COOPS_BEFORE_AFK": 3,
             "GUEST_ROLE_ID": "",
-            "KEEP_COOP_CHANNELS": False,
-            "USE_EMBEDS": True
+            "KEEP_COOP_CHANNELS": False
             }
         with open("config.json", "w") as f:
             json.dump(config, f, indent=4)
@@ -59,9 +58,6 @@ async def on_guild_create(guild: interactions.Guild):
         
         data = await bot._http.get_channel(guild.system_channel_id)
         main_channel = interactions.Channel(**data, _client=bot._http)
-
-        # Fix if working with interactions <= 4.0.2 (fixed in unstable)
-        # guild.roles = [interactions.Role(**role, _client=bot._http) for role in guild.roles]
 
         # Creates Coop Organizer, Coop Creator, AFK and Alt roles if not exist
         coop_role = [role for role in guild.roles if role.name == "Coop Organizer"]
@@ -208,6 +204,18 @@ async def modify_data_file(ctx, filename, key_path, value = None):
     except Exception as inst:
         await ctx.send(f"Administrative error (#4) :confounded:\n```{type(inst)}\n{inst}```")
         return
+
+@pycord_bot.command(name="updateversion")
+@pycord_commands.is_owner()
+async def update_version(ctx):
+    with open("config.json", "r") as f:
+        config = json.load(f)
+    
+    for guild_id in config["guilds"].keys():
+        config["guilds"][guild_id].pop("USE_EMBEDS", None)
+    
+    with open("config.json", "w") as f:
+        json.dump(config, f, indent=4)
 
 #endregion
 

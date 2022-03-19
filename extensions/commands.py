@@ -135,10 +135,6 @@ class Commands(interactions.Extension):
                     interactions.Choice(
                         name="Whether or not to keep coop channel after the coop has been marked completed or failed (true/false)",
                         value="KEEP_COOP_CHANNELS"
-                    ),
-                    interactions.Choice(
-                        name="Whether or not to use embeds, as mentions don't display on mobile if user not in cache (true/false)",
-                        value="USE_EMBEDS"
                     )
                 ]
             ),
@@ -159,7 +155,7 @@ class Commands(interactions.Extension):
             except Exception:
                 await ctx.send(":warning: Invalid value", ephemeral=True)
                 return
-        elif setting in ["KEEP_COOP_CHANNELS", "USE_EMBEDS"]:
+        elif setting in ["KEEP_COOP_CHANNELS"]:
             if value.lower() == "true":
                 value = True
             elif value.lower() == "false":

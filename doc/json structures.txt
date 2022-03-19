@@ -14,7 +14,7 @@ data/running_coops.json:
 				"channel_id": [channel-id],
 				"message_id": [message-id],
 				"locked": true/false,
-				"completed_or_failed": true/false,
+				"completed_or_failed": false/"completed"/"failed", # False if still running
 				"members" : [
 					[discord-id],
 					...
