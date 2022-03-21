@@ -61,4 +61,23 @@ def check_context_menu_coop_message(target_message_id):
 
 #region Permissions checks
 
+async def check_is_owner(author: pycord.Member, pycord_bot: pycord.Client):
+    return await pycord_bot.is_owner(author)
+
+def check_is_admin(author: pycord.Member):
+    return author.guild_permissions.administrator
+
+def check_is_coop_organizer(author: pycord.Member, guild: pycord.Guild):
+    organizer_role = pycord.utils.get(guild.roles, name="Coop Organizer")
+    return organizer_role in author.roles
+
+def check_is_coop_creator(author: pycord.Member, guild: pycord.Guild, contract_id, coop_nb):
+    running_coops = utils.read_json("running_coops")
+    creator_role = pycord.utils.get(guild.roles, name="Coop Creator")
+    return creator_role in author.roles and author.id == running_coops[contract_id]["coops"][coop_nb-1]["creator"]
+
+def check_is_afk(author: pycord.Member, guild: pycord.Guild):
+    afk_role = pycord.utils.get(guild.roles, name="AFK")
+    return afk_role in author.roles
+
 #endregion

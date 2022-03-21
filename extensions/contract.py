@@ -4,7 +4,7 @@ import interactions
 from interactions import CommandContext, ComponentContext
 from interactions.ext.wait_for import *
 
-from extensions import checks, utils
+import extensions.checks as checks, extensions.utils as utils
 
 import json
 from datetime import date
@@ -49,8 +49,6 @@ class Contract(interactions.Extension):
                 required=True
             )
         ])
-    # TODO Owner, admin and coop organizer permissions
-    #@pycord_commands.check_any(pycord_commands.is_owner(), pycord_commands.has_permissions(administrator=True), pycord_commands.has_role("Coop Organizer"))
     async def add_contract(self, ctx: CommandContext, contract_id: str, size: int, is_leggacy: bool):
     
         running_coops = utils.read_json("running_coops")
@@ -58,6 +56,12 @@ class Contract(interactions.Extension):
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
         ctx_channel = await ctx_guild.get_channel(int(ctx.channel_id))
+        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+
+        # Owner, admin and coop organizer permissions
+        if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
+            await ctx.send(":x: Unauthorized", ephemeral=True)
+            return
 
         if contract_id in running_coops.keys():
             await ctx.send(":warning: Contract already exists", ephemeral=True)
@@ -178,7 +182,6 @@ class Contract(interactions.Extension):
         description="If all coops are completed/failed, deletes the contract channel and category",
         scope=GUILD_IDS
     )
-    # TODO Owner, admin and coop organizer permissions
     async def remove_contract_slash(self, ctx: CommandContext):
         
         if not (contract_id := checks.check_contract_channel(int(ctx.channel_id))):
@@ -186,14 +189,19 @@ class Contract(interactions.Extension):
             return
 
         running_coops = utils.read_json("running_coops")
+        interac_guild = await ctx.get_guild()
+        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+
+        # Owner, admin and coop organizer permissions
+        if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
+            await ctx.send(":x: Unauthorized", ephemeral=True)
+            return
 
         for coop in running_coops[contract_id]["coops"]:
             if not coop["completed_or_failed"]:
                 await ctx.send(":warning: Some coops are still running", ephemeral=True)
                 return
-        
-        interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
         
         await self.execute_remove_contract(ctx_guild, contract_id)
 
@@ -204,7 +212,6 @@ class Contract(interactions.Extension):
         description="Sends the codes of currently running coops",
         scope=GUILD_IDS
     )
-    # TODO Owner, admin and coop organizer permissions
     async def get_coop_codes(self, ctx: ComponentContext):
 
         if not (contract_id := checks.check_contract_channel(int(ctx.channel_id))):
@@ -212,6 +219,14 @@ class Contract(interactions.Extension):
             return
         
         running_coops = utils.read_json("running_coops")
+        interac_guild = await ctx.get_guild()
+        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+
+        # Owner, admin and coop organizer permissions
+        if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
+            await ctx.send(":x: Unauthorized", ephemeral=True)
+            return
         
         message = f"__**Coop codes for `{contract_id}`:**__\n"
         for i in range(len(running_coops[id]["coops"])):
@@ -228,7 +243,6 @@ class Contract(interactions.Extension):
         scope=GUILD_IDS,
         type=interactions.ApplicationCommandType.MESSAGE
     )
-    # TODO Owner, admin and coop organizer permissions
     async def remove_contract_menu(self, ctx: ComponentContext):
         
         if not (contract_id := checks.check_context_menu_contract_message(int(ctx.target.id))):
@@ -236,6 +250,14 @@ class Contract(interactions.Extension):
             return
 
         running_coops = utils.read_json("running_coops")
+        interac_guild = await ctx.get_guild()
+        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+
+        # Owner, admin and coop organizer permissions
+        if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
+            await ctx.send(":x: Unauthorized", ephemeral=True)
+            return
         
         for coop in running_coops[contract_id]["coops"]:
             if not coop["completed_or_failed"]:
@@ -251,9 +273,21 @@ class Contract(interactions.Extension):
 
     #region Events
 
-    @interactions.extension_command("on_component")
-    async def contract_already_done_event(self, ctx: ComponentContext):
+    @interactions.extension_listener("on_message_create")
+    async def on_message_create(self, message: interactions.Message):
+        # TODO Remove in interactions update after 4.1.0
+        message._client = self.bot._http
 
+        if not message.author.bot:
+            running_coops = utils.read_json("running_coops")
+            
+            for contract in running_coops.values():
+                if int(message.channel_id) == contract["channel_id"]:
+                    await message.delete()
+
+    @interactions.extension_listener("on_component")
+    async def contract_already_done_event(self, ctx: ComponentContext):
+        
         # Already done leggacy button
         if ctx.data.custom_id.startswith("leggacy_"):
             contract_id = ctx.data.custom_id.split('_')[1]
@@ -444,19 +478,16 @@ class Contract(interactions.Extension):
 
     # @interactions.extension_command(
     #     name="test",
-    #     description="Help command",
-    #     scope=GUILD_IDS,
-    #     options=[
-    #         interactions.Option(
-    #             name="member",
-    #             description="Member selected",
-    #             type=interactions.OptionType.USER,
-    #             required=True
-    #         )
-    #     ]
+    #     description="Test command",
+    #     scope=GUILD_IDS
     # )
-    # async def test(self, ctx: CommandContext, member: interactions.Member):
-    #     print(member)
+    # async def test(self, ctx: CommandContext):
+    #     button = interactions.Button(
+    #         style=interactions.ButtonStyle.PRIMARY,
+    #         label="test button",
+    #         custom_id="test_id"
+    #     )
+    #     await ctx.send(content="test message", components=button)
 
 def setup(bot, pycord_bot):
     Contract(bot, pycord_bot)

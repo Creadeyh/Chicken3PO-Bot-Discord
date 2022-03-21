@@ -4,7 +4,7 @@ import interactions
 from interactions import CommandContext, ComponentContext
 from interactions.ext.wait_for import *
 
-from extensions import checks, utils
+import extensions.checks as checks, extensions.utils as utils
 
 import json
 from datetime import date
@@ -22,28 +22,6 @@ class Coop(interactions.Extension):
     def __init__(self, bot, pycord_bot):
         self.bot: interactions.Client = bot
         self.pycord_bot: pycord_commands.Bot = pycord_bot
-
-
-    #region Check methods
-
-    # TODO
-    # def is_not_afk():
-    #     def predicate(ctx):
-    #         afk_role = discord.utils.get(ctx.guild.roles, name="AFK")
-    #         return afk_role not in ctx.author.roles
-    #     return commands.check(predicate)
-    
-    # def is_coop_creator_context_menu():
-    #     def predicate(ctx):
-    #         running_coops = ctx.bot.get_cog("Utils").read_json("running_coops")
-    #         for contract in running_coops.values():
-    #             for coop in contract["coops"]:
-    #                 if ctx.target_message.id == coop["message_id"] and ctx.author.id == coop["creator"]:
-    #                     return True
-    #         return False
-    #     return commands.check(predicate)
-
-    #endregion
 
     #region Slash commands (contract channels)
     
@@ -65,7 +43,6 @@ class Coop(interactions.Extension):
                 required=False
             )
         ])
-    # TODO @is_not_afk()
     async def add_coop(self, ctx: CommandContext, coop_code: str, locked: bool=False):
         
         if not (contract_id := checks.check_contract_channel(int(ctx.channel_id))):
@@ -73,17 +50,22 @@ class Coop(interactions.Extension):
             return
 
         running_coops = utils.read_json("running_coops")
-        if "already_done" in running_coops[contract_id].keys() and ctx.author.id in running_coops[contract_id]["already_done"]:
-            await ctx.send("You have already completed this contract :smile:", ephemeral=True)
-            return
-        for coop in running_coops[contract_id]["coops"]:
-            if ctx.author.id in coop["members"]:
-                await ctx.send("You have already joined a coop for this contract :smile:", ephemeral=True)
-                return
-        
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
         ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+
+        # AFK permission
+        if checks.check_is_afk(ctx_author, ctx_guild):
+            await ctx.send(":x: Unauthorized", ephemeral=True)
+            return
+
+        if "already_done" in running_coops[contract_id].keys() and ctx_author.id in running_coops[contract_id]["already_done"]:
+            await ctx.send("You have already completed this contract :smile:", ephemeral=True)
+            return
+        for coop in running_coops[contract_id]["coops"]:
+            if ctx_author.id in coop["members"]:
+                await ctx.send("You have already joined a coop for this contract :smile:", ephemeral=True)
+                return
 
         coop_nb = len(running_coops[contract_id]["coops"]) + 1
         contract_channel = pycord.utils.get(ctx_guild.channels, id=running_coops[contract_id]["channel_id"])
@@ -150,7 +132,6 @@ class Coop(interactions.Extension):
         description="Locks a coop, preventing people from joining",
         scope=GUILD_IDS
     )
-    # TODO Owner, admin, coop organizer and coop creator permissions
     async def lock_coop(self, ctx: CommandContext):
 
         if not (coop_infos_tuple := checks.check_coop_channel(int(ctx.channel_id))):
@@ -159,6 +140,19 @@ class Coop(interactions.Extension):
         contract_id, coop_nb = coop_infos_tuple
 
         running_coops = utils.read_json("running_coops")
+        interac_guild = await ctx.get_guild()
+        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+
+        # Owner, admin, coop organizer and coop creator permissions
+        if not (
+            checks.check_is_owner(ctx_author, self.pycord_bot)
+            or checks.check_is_admin(ctx_author)
+            or checks.check_is_coop_organizer(ctx_author, ctx_guild)
+            or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
+        ):
+            await ctx.send(":x: Unauthorized", ephemeral=True)
+            return
 
         if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
             await ctx.send(":warning: Coop is completed or failed", ephemeral=True)
@@ -166,9 +160,6 @@ class Coop(interactions.Extension):
         if running_coops[contract_id]["coops"][coop_nb-1]["locked"]:
             await ctx.send(":warning: Coop is already locked", ephemeral=True)
             return
-        
-        interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
 
         running_coops[contract_id]["coops"][coop_nb-1]["locked"] = True
         utils.save_json("running_coops", running_coops)
@@ -183,7 +174,6 @@ class Coop(interactions.Extension):
         description="Unlocks a coop, allowing people to join again",
         scope=GUILD_IDS
     )
-    # TODO Owner, admin, coop organizer and coop creator permissions
     async def unlock_coop(self, ctx: CommandContext):
 
         if not (coop_infos_tuple := checks.check_coop_channel(int(ctx.channel_id))):
@@ -192,6 +182,19 @@ class Coop(interactions.Extension):
         contract_id, coop_nb = coop_infos_tuple
 
         running_coops = utils.read_json("running_coops")
+        interac_guild = await ctx.get_guild()
+        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+
+        # Owner, admin, coop organizer and coop creator permissions
+        if not (
+            checks.check_is_owner(ctx_author, self.pycord_bot)
+            or checks.check_is_admin(ctx_author)
+            or checks.check_is_coop_organizer(ctx_author, ctx_guild)
+            or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
+        ):
+            await ctx.send(":x: Unauthorized", ephemeral=True)
+            return
 
         if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
             await ctx.send(":warning: Coop is completed or failed", ephemeral=True)
@@ -199,9 +202,6 @@ class Coop(interactions.Extension):
         if not running_coops[contract_id]["coops"][coop_nb-1]["locked"]:
             await ctx.send(":warning: Coop is already unlocked", ephemeral=True)
             return
-
-        interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
 
         running_coops[contract_id]["coops"][coop_nb-1]["locked"] = False
         utils.save_json("running_coops", running_coops)
@@ -223,7 +223,6 @@ class Coop(interactions.Extension):
                 required=True
             )
         ])
-    # TODO Owner, admin, coop organizer and coop creator permissions
     async def kick_from_coop(self, ctx: CommandContext, member: interactions.Member):
 
         if not (coop_infos_tuple := checks.check_coop_channel(int(ctx.channel_id))):
@@ -232,10 +231,19 @@ class Coop(interactions.Extension):
         contract_id, coop_nb = coop_infos_tuple
 
         running_coops = utils.read_json("running_coops")
-
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
         ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+
+        # Owner, admin, coop organizer and coop creator permissions
+        if not (
+            checks.check_is_owner(ctx_author, self.pycord_bot)
+            or checks.check_is_admin(ctx_author)
+            or checks.check_is_coop_organizer(ctx_author, ctx_guild)
+            or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
+        ):
+            await ctx.send(":x: Unauthorized", ephemeral=True)
+            return
 
         alt_role = pycord.utils.get(ctx_guild.roles, name="Alt")
 
@@ -318,7 +326,6 @@ class Coop(interactions.Extension):
         description="Marks the coop as completed",
         scope=GUILD_IDS
     )
-    # TODO Owner, admin, coop organizer and coop creator permissions
     async def coop_completed_slash(self, ctx: ComponentContext):
         
         if not (coop_infos_tuple := checks.check_coop_channel(int(ctx.channel_id))):
@@ -327,13 +334,24 @@ class Coop(interactions.Extension):
         contract_id, coop_nb = coop_infos_tuple
 
         running_coops = utils.read_json("running_coops")
+        interac_guild = await ctx.get_guild()
+        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+
+        # Owner, admin, coop organizer and coop creator permissions
+        if not (
+            checks.check_is_owner(ctx_author, self.pycord_bot)
+            or checks.check_is_admin(ctx_author)
+            or checks.check_is_coop_organizer(ctx_author, ctx_guild)
+            or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
+        ):
+            await ctx.send(":x: Unauthorized", ephemeral=True)
+            return
 
         if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
             await ctx.send(":warning: Coop is already completed or failed", ephemeral=True)
             return
         
-        interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
         
         await self.execute_coop_completed(ctx_guild, contract_id, coop_nb)
         
@@ -345,7 +363,6 @@ class Coop(interactions.Extension):
         description="Marks the coop as failed. Returns members to the remaining list",
         scope=GUILD_IDS
     )
-    # TODO Owner, admin, coop organizer and coop creator permissions
     async def coop_failed_slash(self, ctx: CommandContext):
         
         if not (coop_infos_tuple := checks.check_coop_channel(int(ctx.channel_id))):
@@ -354,13 +371,24 @@ class Coop(interactions.Extension):
         contract_id, coop_nb = coop_infos_tuple
 
         running_coops = utils.read_json("running_coops")
+        interac_guild = await ctx.get_guild()
+        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+
+        # Owner, admin, coop organizer and coop creator permissions
+        if not (
+            checks.check_is_owner(ctx_author, self.pycord_bot)
+            or checks.check_is_admin(ctx_author)
+            or checks.check_is_coop_organizer(ctx_author, ctx_guild)
+            or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
+        ):
+            await ctx.send(":x: Unauthorized", ephemeral=True)
+            return
 
         if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
             await ctx.send(":warning: Coop is already completed or failed", ephemeral=True)
             return
         
-        interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
         
         await self.execute_coop_failed(ctx_guild, contract_id, coop_nb)
         
@@ -376,7 +404,6 @@ class Coop(interactions.Extension):
         scope=GUILD_IDS,
         type=interactions.ApplicationCommandType.MESSAGE
     )
-    # TODO @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"), is_coop_creator_context_menu())
     async def coop_completed_menu(self, ctx: ComponentContext):
         
         if not (coop_infos_tuple := checks.check_context_menu_coop_message(int(ctx.target.id))):
@@ -387,6 +414,17 @@ class Coop(interactions.Extension):
         running_coops = utils.read_json("running_coops")
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+
+        # Owner, admin, coop organizer and coop creator permissions
+        if not (
+            checks.check_is_owner(ctx_author, self.pycord_bot)
+            or checks.check_is_admin(ctx_author)
+            or checks.check_is_coop_organizer(ctx_author, ctx_guild)
+            or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
+        ):
+            await ctx.send(":x: Unauthorized", ephemeral=True)
+            return
 
         if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
             await ctx.send(":warning: Coop is already completed or failed", ephemeral=True)
@@ -402,7 +440,6 @@ class Coop(interactions.Extension):
         scope=GUILD_IDS,
         type=interactions.ApplicationCommandType.MESSAGE
     )
-    # TODO @commands.check_any(commands.is_owner(), commands.has_permissions(administrator=True), commands.has_role("Coop Organizer"), is_coop_creator_context_menu())
     async def coop_failed(self, ctx: ComponentContext):
         
         if not (coop_infos_tuple := checks.check_context_menu_coop_message(int(ctx.target.id))):
@@ -413,6 +450,17 @@ class Coop(interactions.Extension):
         running_coops = utils.read_json("running_coops")
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+
+        # Owner, admin, coop organizer and coop creator permissions
+        if not (
+            checks.check_is_owner(ctx_author, self.pycord_bot)
+            or checks.check_is_admin(ctx_author)
+            or checks.check_is_coop_organizer(ctx_author, ctx_guild)
+            or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
+        ):
+            await ctx.send(":x: Unauthorized", ephemeral=True)
+            return
 
         if running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"]:
             await ctx.send(":warning: Coop is already completed or failed", ephemeral=True)
@@ -427,9 +475,9 @@ class Coop(interactions.Extension):
 
     #region Events
 
-    @interactions.extension_command("on_component")
+    @interactions.extension_listener("on_component")
     async def join_coop_event(self, ctx: ComponentContext):
-
+        
         # Join coop button
         if ctx.data.custom_id.startswith("joincoop_"):
             contract_id = ctx.data.custom_id.split('_')[1]

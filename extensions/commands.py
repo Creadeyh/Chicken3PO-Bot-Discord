@@ -3,7 +3,7 @@ from discord.ext import commands as pycord_commands
 import interactions
 from interactions import CommandContext, ComponentContext
 
-import extensions.utils as utils
+import extensions.checks as checks, extensions.utils as utils
 
 import json
 
@@ -146,8 +146,16 @@ class Commands(interactions.Extension):
             )
         ]
     )
-    # TODO Owner and admin permissions
     async def settings(self, ctx: CommandContext, setting: str, value):
+
+        interac_guild = await ctx.get_guild()
+        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+
+        # Owner and admin permissions
+        if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author)):
+            await ctx.send(":x: Unauthorized", ephemeral=True)
+            return
 
         if setting in ["COOPS_BEFORE_AFK", "GUEST_ROLE_ID"]:
             try:

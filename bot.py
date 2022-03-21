@@ -19,11 +19,14 @@ with open("config.json", "r") as f:
     COMMAND_PREFIX = config["COMMAND_PREFIX"]
 
 pycord_bot = pycord_commands.Bot(command_prefix=COMMAND_PREFIX, intents=pycord_intents)
-bot = interactions.Client(token=TOKEN, intents=intents)
+# RELEASE
+#bot = interactions.Client(token=TOKEN, intents=intents)
+# DEBUG
+bot = interactions.Client(token=TOKEN, intents=intents, disable_sync=True)
 
 bot.load("extensions.commands", None, pycord_bot)
 bot.load("extensions.contract", None, pycord_bot)
-# bot.load("extensions.coop", None, pycord_bot)
+bot.load("extensions.coop", None, pycord_bot)
 
 #endregion
 
@@ -35,9 +38,9 @@ async def on_ready():
     print("Bot is ready")
 
 async def reload_extensions():
-    print()
-    # dpy_bot.reload_extension("extensions.user_utils")
-    # dpy_bot.reload_extension("extensions.coop")
+    bot.reload("extensions.commands", None, pycord_bot)
+    bot.reload("extensions.contract", None, pycord_bot)
+    bot.reload("extensions.coop", None, pycord_bot)
 
 @bot.event
 async def on_guild_create(guild: interactions.Guild):
