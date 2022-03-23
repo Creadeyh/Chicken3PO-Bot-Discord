@@ -476,18 +476,5 @@ class Contract(interactions.Extension):
 
     #endregion
 
-    # @interactions.extension_command(
-    #     name="test",
-    #     description="Test command",
-    #     scope=GUILD_IDS
-    # )
-    # async def test(self, ctx: CommandContext):
-    #     button = interactions.Button(
-    #         style=interactions.ButtonStyle.PRIMARY,
-    #         label="test button",
-    #         custom_id="test_id"
-    #     )
-    #     await ctx.send(content="test message", components=button)
-
 def setup(bot, pycord_bot):
     Contract(bot, pycord_bot)

@@ -195,90 +195,129 @@ class Commands(interactions.Extension):
         description="Help command",
         scope=GUILD_IDS
     )
-    # TODO Redo with better layout
     async def help(self, ctx: CommandContext):
-        await ctx.send("__**Chicken3PO Commands**__\n\n", ephemeral=True)
 
-        await ctx.send("`&setuphere`\n" +
-                        "- Admins only\n" +
-                        "- Defines the channel as reserved for bot commands\n\n" +
+        interac_guild = await ctx.get_guild()
+        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.id))
 
-                        "`/settings [setting] [value]`\n" +
-                        "- Admins only\n" +
-                        "- Changes a setting value of the bot for the guild\n" +
-                        "- *setting* = The setting to change\n" +
-                        "- *value* = The value to set\n\n" +
+        embed, action_row_buttons, action_row_select = self.load_help(0, 0, checks.check_is_admin(ctx_author))
+        await ctx.send(embeds=embed, components=[action_row_buttons, action_row_select], ephemeral=True)
 
-                        "`/contract [contract-id] [size] [is-leggacy]`\n" +
-                        "- Admins and coop organizers only\n" +
-                        "- Registers a new contract and creates a channel and category for it\n" +
-                        "- *contract-id* = The unique ID for an EggInc contract\n" +
-                        "- *size* = Number of slots available in the contract\n" +
-                        "- *is-leggacy* = Whether the contract is leggacy or not\n\n" +
+    #endregion
 
-                        "`/coop [contract-id] [coop-code] [locked]`\n" +
-                        "- Registers a new coop and displays it in the contract channel\n" +
-                        "- *contract-id* = The unique ID for an EggInc contract\n" +
-                        "- *coop-code* = The code to join the coop\n" +
-                        "- *locked* = Whether or not the coop is locked at creation. Prevents people from joining\n\n" +
+    #region Events
 
-                        "`/lock [contract-id] [coop-nb]`\n" +
-                        "- Admins, coop organizers and coop creators only\n" +
-                        "- Locks a coop, preventing people from joining\n" +
-                        "- *contract-id* = The unique ID for an EggInc contract\n" +
-                        "- *coop-nb* = The number of the coop. If not given, looks for the coop of which you are the creator\n\n" +
+    @interactions.extension_listener("on_component")
+    async def help_event(self, ctx: ComponentContext):
 
-                        "`/unlock [contract-id] [coop-nb]`\n" +
-                        "- Admins, coop organizers and coop creators only\n" +
-                        "- Unlocks a coop, allowing people to join again\n" +
-                        "- *contract-id* = The unique ID for an EggInc contract\n" +
-                        "- *coop-nb* = The number of the coop. If not given, looks for the coop of which you are the creator\n\n",
-                        ephemeral=True)
+        if ctx.data.custom_id.startswith("help_"):
+            interac_guild = await ctx.get_guild()
+            ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
+            ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.id))
 
-        await ctx.send("`/kick [member] [contract-id] [coop-nb]`\n" +
-                        "- Admins, coop organizers and coop creators only\n" +
-                        "- Kicks someone from a coop\n" +
-                        "- *member* = The member to be kicked from the coop\n" +
-                        "- *contract-id* = The unique ID for an EggInc contract\n" +
-                        "- *coop-nb* = The number of the coop. If not given, looks for the coop of which you are the creator\n\n" +
+            if ctx.data.custom_id.startswith("help_button_"):
+                split = ctx.data.custom_id.split("_")
+                category = int(split[2])
+                page = int(split[3])
 
-                        "`/codes [contract-id]`\n" +
-                        "- Admins and coop organizers only\n" +
-                        "- Sends the codes of currently running coops\n" +
-                        "- *contract-id* = The contract for which you want the coop codes. If not given, sends for all running contracts\n\n" +
+                embed, action_row_buttons, action_row_select = self.load_help(category, page, checks.check_is_admin(ctx_author))
+                await ctx.edit(embeds=embed, components=[action_row_buttons, action_row_select])
+            
+            elif ctx.data.custom_id.startswith("help_selectmenu"):
+                category = int(ctx.data.values[0])
+                page = 0
 
-                        "`/register-alt [member] [name_main] [name_alt]`\n" +
-                        "- Admins only\n" +
-                        "- Registers an alt EggInc account for the Discord account\n" +
-                        "- *member* = The Discord account\n" +
-                        "- *name-main* = The EggInc name of the main account\n" +
-                        "- *name-alt* = The EggInc name of the alt account\n\n" +
+                embed, action_row_buttons, action_row_select = self.load_help(category, page, checks.check_is_admin(ctx_author))
+                await ctx.edit(embeds=embed, components=[action_row_buttons, action_row_select])
 
-                        "`/unregister-alt [member]`\n" +
-                        "- Admins only\n" +
-                        "- Unregisters the alt EggInc account for the Discord account\n" +
-                        "- *member* = The Discord account\n\n" +
+    #endregion
 
-                        "`/coop-completed [contract_id] [coop_nb]`\n" +
-                        "OR *Right click on coop message -> Applications -> `Coop completed`*\n" +
-                        "- Admins, coop organizers and coop creators only\n" +
-                        "- Marks the coop as completed\n" +
-                        "- *contract-id* = The unique ID for an EggInc contract\n" +
-                        "- *coop-nb* = The number of the coop. If not given, looks for the coop of which you are the creator\n\n" +
+    #region Misc methods
 
-                        "`/coop-failed [contract_id] [coop_nb]`\n" +
-                        "OR *Right click on coop message -> Applications -> `Coop failed`*\n" +
-                        "- Admins, coop organizers and coop creators only\n" +
-                        "- Marks the coop as failed. Returns members to the remaining list\n" +
-                        "- *contract-id* = The unique ID for an EggInc contract\n" +
-                        "- *coop-nb* = The number of the coop. If not given, looks for the coop of which you are the creator\n\n" +
+    def load_help(self, category: int, page: int, with_admin=False):
+        with open("doc/help/help_data.json", "r") as f:
+            help_dic = json.load(f)
+        
+        if not with_admin:
+            del help_dic[1]
+        
+        embed_image = None
+        if help_dic[category]["pages"][page]["image_url"]:
+            embed_image = interactions.EmbedImageStruct(
+                    url=help_dic[category]["pages"][page]["image_url"]
+                )._json # TODO Remove ._json in next interactions version
+        
+        embed = interactions.Embed(
+            title="__**Chicken3PO Commands**__",
+            description=f"***{help_dic[category]['title']} - {page+1}/{len(help_dic[category]['pages'])}***",
+            fields=[
+                interactions.EmbedField(
+                    name=help_dic[category]["pages"][page]["title"],
+                    value=help_dic[category]["pages"][page]["content"]
+                )
+            ],
+            image=embed_image
+        )
 
-                        "`/contract-remove [contract_id]`\n" +
-                        "OR *Right click on contract message -> Applications -> `Remove contract`*\n" +
-                        "- Admins and coop organizers only\n" +
-                        "- If all coops are completed/failed, deletes the contract channel and category\n" +
-                        "- *contract-id* = The unique ID for an EggInc contract",
-                        ephemeral=True)
+        if page > 0:
+            previous_page = page - 1
+            previous_category = category
+            prev_disabled = False
+        else:
+            if category > 0:
+                previous_page = len(help_dic[category-1]["pages"]) - 1
+                previous_category = category - 1
+                prev_disabled = False
+            else:
+                previous_page, previous_category = "", ""
+                prev_disabled = True
+        
+        if page < len(help_dic[category]["pages"])-1:
+            next_page = page + 1
+            next_category = category
+            next_disabled = False
+        else:
+            if category < len(help_dic)-1:
+                next_page = 0
+                next_category = category + 1
+                next_disabled = False
+            else:
+                next_page, next_category = "", ""
+                next_disabled = True
+
+        action_row_buttons = interactions.ActionRow(components=[
+            interactions.Button(
+                label="◀️",
+                style=interactions.ButtonStyle.PRIMARY,
+                custom_id=f"help_button_{previous_category}_{previous_page}",
+                disabled=prev_disabled
+            ),
+            interactions.Button(
+                label="▶️",
+                style=interactions.ButtonStyle.PRIMARY,
+                custom_id=f"help_button_{next_category}_{next_page}",
+                disabled=next_disabled
+            )
+        ])
+
+        select_options = []
+        for i, dic in enumerate(help_dic):
+            select_options.append(
+                interactions.SelectOption(
+                    label=f"{i+1}. {dic['title']}",
+                    value=f"{i}",
+                    default=True if i == category else False
+                )
+            )
+        action_row_select = interactions.ActionRow(components=[
+            interactions.SelectMenu(
+                custom_id="help_selectmenu",
+                options=select_options
+            ),
+        ])
+
+        return embed, action_row_buttons, action_row_select
 
     #endregion
 
