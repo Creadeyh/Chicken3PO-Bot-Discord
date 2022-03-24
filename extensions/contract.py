@@ -55,8 +55,8 @@ class Contract(interactions.Extension):
         archive = utils.read_json("participation_archive")
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_channel = await ctx_guild.get_channel(int(ctx.channel_id))
-        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+        ctx_channel = ctx_guild.get_channel(int(ctx.channel_id))
+        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
 
         # Owner, admin and coop organizer permissions
         if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
@@ -191,7 +191,7 @@ class Contract(interactions.Extension):
         running_coops = utils.read_json("running_coops")
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
 
         # Owner, admin and coop organizer permissions
         if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
@@ -221,7 +221,7 @@ class Contract(interactions.Extension):
         running_coops = utils.read_json("running_coops")
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
 
         # Owner, admin and coop organizer permissions
         if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
@@ -252,7 +252,7 @@ class Contract(interactions.Extension):
         running_coops = utils.read_json("running_coops")
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
 
         # Owner, admin and coop organizer permissions
         if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
@@ -294,7 +294,7 @@ class Contract(interactions.Extension):
 
             interac_guild = await ctx.get_guild()
             ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-            ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+            ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
 
             author_id = ctx_author.id
 

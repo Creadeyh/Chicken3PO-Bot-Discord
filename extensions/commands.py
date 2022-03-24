@@ -50,7 +50,7 @@ class Commands(interactions.Extension):
         
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
 
         # Owner and admin permissions
         if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author)):
@@ -94,7 +94,7 @@ class Commands(interactions.Extension):
 
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
 
         # Owner and admin permissions
         if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author)):
@@ -160,7 +160,7 @@ class Commands(interactions.Extension):
 
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.get_member(int(ctx.author.user.id))
+        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
 
         # Owner and admin permissions
         if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author)):

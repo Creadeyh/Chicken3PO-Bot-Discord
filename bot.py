@@ -222,7 +222,6 @@ async def update_version(ctx):
 
 #endregion
 
-# TODO on_slash_command_error re-implement elsewhere
 #region Command Events
 
 @pycord_bot.event
