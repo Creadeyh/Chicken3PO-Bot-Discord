@@ -49,11 +49,11 @@ class Commands(interactions.Extension):
     async def register_alt_account(self, ctx: ComponentContext, member: interactions.Member, name_main: str, name_alt: str):
         
         interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
+        ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner and admin permissions
-        if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author)):
+        if not (await checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author)):
             await ctx.send(":x: Unauthorized", ephemeral=True)
             return
 
@@ -93,11 +93,11 @@ class Commands(interactions.Extension):
     async def unregister_alt_account(self, ctx: ComponentContext, member: interactions.Member):
 
         interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
+        ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner and admin permissions
-        if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author)):
+        if not (await checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author)):
             await ctx.send(":x: Unauthorized", ephemeral=True)
             return
 
@@ -106,7 +106,7 @@ class Commands(interactions.Extension):
             return
 
         pycord_member: pycord.Member = ctx_guild.get_member(int(member.id))
-        alt_role = utils.get(ctx_guild.roles, name="Alt")
+        alt_role = pycord.utils.get(ctx_guild.roles, name="Alt")
         if alt_role not in pycord_member.roles:
             await ctx.send(":warning: This user has no alt account", ephemeral=True)
             return
@@ -159,11 +159,11 @@ class Commands(interactions.Extension):
     async def settings(self, ctx: CommandContext, setting: str, value):
 
         interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
+        ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner and admin permissions
-        if not (checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author)):
+        if not (await checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author)):
             await ctx.send(":x: Unauthorized", ephemeral=True)
             return
 
@@ -198,8 +198,8 @@ class Commands(interactions.Extension):
     async def help(self, ctx: CommandContext):
 
         interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.id))
+        ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.id))
 
         embed, action_row_buttons, action_row_select = self.load_help(0, 0, checks.check_is_admin(ctx_author))
         await ctx.send(embeds=embed, components=[action_row_buttons, action_row_select], ephemeral=True)
@@ -213,8 +213,8 @@ class Commands(interactions.Extension):
 
         if ctx.data.custom_id.startswith("help_"):
             interac_guild = await ctx.get_guild()
-            ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-            ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.id))
+            ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
+            ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.id))
 
             if ctx.data.custom_id.startswith("help_button_"):
                 split = ctx.data.custom_id.split("_")

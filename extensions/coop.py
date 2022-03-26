@@ -51,8 +51,8 @@ class Coop(interactions.Extension):
 
         running_coops = utils.read_json("running_coops")
         interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
+        ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # AFK permission
         if checks.check_is_afk(ctx_author, ctx_guild):
@@ -68,11 +68,13 @@ class Coop(interactions.Extension):
                 return
 
         coop_nb = len(running_coops[contract_id]["coops"]) + 1
-        contract_channel = pycord.utils.get(ctx_guild.channels, id=running_coops[contract_id]["channel_id"])
+        data = await self.bot._http.get_channel(running_coops[contract_id]["channel_id"])
+        contract_channel = interactions.Channel(**data, _client=self.bot._http)
+        contract_category = ctx_guild.get_channel(int(contract_channel.parent_id))
 
         # Creates coop channel and role
         coop_role = await ctx_guild.create_role(name=f"{contract_id}-{coop_nb}")
-        coop_channel = await contract_channel.category.create_text_channel(f"coop-{coop_nb}",
+        coop_channel = await contract_category.create_text_channel(f"coop-{coop_nb}",
                                                                     overwrites={
                                                                         ctx_guild.default_role: pycord.PermissionOverwrite(view_channel=False),
                                                                         pycord.utils.get(ctx_guild.roles, name=self.pycord_bot.user.name): pycord.PermissionOverwrite(view_channel=True),
@@ -103,16 +105,16 @@ class Coop(interactions.Extension):
         running_coops[contract_id]["remaining"].remove(ctx_author.id)
         utils.save_json("running_coops", running_coops)
 
-        coop_content, join_button = utils.generate_coop_message_content_component(self.pycord_bot, ctx_guild, contract_id, coop_nb)
+        coop_content, join_button = await utils.generate_coop_message_content_component(self.pycord_bot, ctx_guild, contract_id, coop_nb)
         coop_message = await contract_channel.send(content=coop_content, components=join_button)
 
-        running_coops[contract_id]["coops"][coop_nb-1]["message_id"] = coop_message.id
+        running_coops[contract_id]["coops"][coop_nb-1]["message_id"] = int(coop_message.id)
 
         # Notif to coop organizers
         if len(running_coops[contract_id]["remaining"]) == 0:
-            await utils.send_notif_no_remaining(ctx.guild, contract_id)
+            await utils.send_notif_no_remaining(ctx_guild, contract_id)
 
-        utils.update_contract_message(self.bot, self.pycord_bot, ctx_guild, contract_id)
+        await utils.update_contract_message(self.bot, self.pycord_bot, ctx_guild, contract_id)
         utils.save_json("running_coops", running_coops)
 
         # Updates archive JSON
@@ -141,12 +143,12 @@ class Coop(interactions.Extension):
 
         running_coops = utils.read_json("running_coops")
         interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
+        ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner, admin, coop organizer and coop creator permissions
         if not (
-            checks.check_is_owner(ctx_author, self.pycord_bot)
+            await checks.check_is_owner(ctx_author, self.pycord_bot)
             or checks.check_is_admin(ctx_author)
             or checks.check_is_coop_organizer(ctx_author, ctx_guild)
             or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
@@ -164,7 +166,7 @@ class Coop(interactions.Extension):
         running_coops[contract_id]["coops"][coop_nb-1]["locked"] = True
         utils.save_json("running_coops", running_coops)
 
-        utils.update_coop_message(self.bot, self.pycord_bot, ctx_guild, contract_id, coop_nb)
+        await utils.update_coop_message(self.bot, self.pycord_bot, ctx_guild, contract_id, coop_nb)
         
         # Responds to the interaction
         await ctx.send("Coop locked :white_check_mark:", ephemeral=True)
@@ -183,12 +185,12 @@ class Coop(interactions.Extension):
 
         running_coops = utils.read_json("running_coops")
         interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
+        ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner, admin, coop organizer and coop creator permissions
         if not (
-            checks.check_is_owner(ctx_author, self.pycord_bot)
+            await checks.check_is_owner(ctx_author, self.pycord_bot)
             or checks.check_is_admin(ctx_author)
             or checks.check_is_coop_organizer(ctx_author, ctx_guild)
             or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
@@ -206,7 +208,7 @@ class Coop(interactions.Extension):
         running_coops[contract_id]["coops"][coop_nb-1]["locked"] = False
         utils.save_json("running_coops", running_coops)
 
-        utils.update_coop_message(self.bot, self.pycord_bot, ctx_guild, contract_id, coop_nb)
+        await utils.update_coop_message(self.bot, self.pycord_bot, ctx_guild, contract_id, coop_nb)
         
         # Responds to the interaction
         await ctx.send("Coop unlocked :white_check_mark:", ephemeral=True)
@@ -232,12 +234,12 @@ class Coop(interactions.Extension):
 
         running_coops = utils.read_json("running_coops")
         interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
+        ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner, admin, coop organizer and coop creator permissions
         if not (
-            checks.check_is_owner(ctx_author, self.pycord_bot)
+            await checks.check_is_owner(ctx_author, self.pycord_bot)
             or checks.check_is_admin(ctx_author)
             or checks.check_is_coop_organizer(ctx_author, ctx_guild)
             or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
@@ -245,40 +247,47 @@ class Coop(interactions.Extension):
             await ctx.send(":x: Unauthorized", ephemeral=True)
             return
 
-        alt_role = pycord.utils.get(ctx_guild.roles, name="Alt")
-
         # If user has left the guild, member is passed as user ID
+        left = False
         if type(member) != interactions.Member:
+            left = True
             member = await self.bot._http.get_user(member)
             member_id = int(member.user.id)
             ctx_send = ctx
+        else:
+            member = ctx_guild.get_member(int(member.id))
+        
+        alt_role = pycord.utils.get(ctx_guild.roles, name="Alt")
+
+        if left:
+            pass
         # Check for alt
         elif alt_role in member.roles:
-                alt_dic = utils.read_json("alt_index")
-                action_row = interactions.ActionRow(
-                    interactions.Button(
-                        style=interactions.ButtonStyle.SECONDARY,
-                        label=f"{alt_dic[str(member.id)]['main']}",
-                        custom_id=f"main-{uuid.uuid4()}"
-                    ),
-                    interactions.Button(
-                        style=interactions.ButtonStyle.SECONDARY,
-                        label=f"{alt_dic[str(member.id)]['alt']}",
-                        custom_id=f"alt-{uuid.uuid4()}"
-                    )
+            alt_dic = utils.read_json("alt_index")
+            action_row = interactions.ActionRow(components=[
+                interactions.Button(
+                    style=interactions.ButtonStyle.SECONDARY,
+                    label=f"{alt_dic[str(member.id)]['main']}",
+                    custom_id=f"main-{uuid.uuid4()}"
+                ),
+                interactions.Button(
+                    style=interactions.ButtonStyle.SECONDARY,
+                    label=f"{alt_dic[str(member.id)]['alt']}",
+                    custom_id=f"alt-{uuid.uuid4()}"
                 )
-                await ctx.send("Which account do you want to kick ?", components=action_row, ephemeral=True)
+            ])
+            await ctx.send("Which account do you want to kick ?", components=action_row, ephemeral=True)
 
-                try:
-                    ctx_alt: ComponentContext = await wait_for_component(self.bot, components=action_row, timeout=10)
-                except asyncio.TimeoutError:
-                    await ctx.send("Action cancelled :negative_squared_cross_mark:", ephemeral=True)
-                    return
-                if ctx_alt.custom_id.startswith("alt"):
-                    member_id = "alt" + str(member.id)
-                else:
-                    member_id = member.id
-                ctx_send = ctx_alt
+            try:
+                ctx_alt: ComponentContext = await wait_for_component(self.bot, components=action_row, timeout=10)
+            except asyncio.TimeoutError:
+                await ctx.send("Action cancelled :negative_squared_cross_mark:", ephemeral=True)
+                return
+            if ctx_alt.custom_id.startswith("alt"):
+                member_id = "alt" + str(member.id)
+            else:
+                member_id = member.id
+            ctx_send = ctx_alt
         else:
             member_id = member.id
             ctx_send = ctx
@@ -302,16 +311,17 @@ class Coop(interactions.Extension):
         running_coops[contract_id]["remaining"].append(member_id)
         utils.save_json("running_coops", running_coops)
 
-        utils.update_coop_message(self.bot, self.pycord_bot, ctx_guild, contract_id, coop_nb)
-        utils.update_contract_message(self.bot, self.pycord_bot, ctx_guild, contract_id)
+        await utils.update_coop_message(self.bot, self.pycord_bot, ctx_guild, contract_id, coop_nb)
+        await utils.update_contract_message(self.bot, self.pycord_bot, ctx_guild, contract_id)
 
         # Removes coop role to remove access to coop channel
+        # TODO keep role if alt/main is still in
         if str(member_id).startswith("alt"):
             discord_id = member_id.replace("alt", "")
         else:
             discord_id = member_id
-        if type(member) == interactions.Member:
-            await ctx_guild.fetch_member(discord_id).remove_roles(pycord.utils.get(ctx_guild.roles, name=f"{contract_id}-{coop_nb}"))
+        if not left:
+            await member.remove_roles(pycord.utils.get(ctx_guild.roles, name=f"{contract_id}-{coop_nb}"))
 
         # Updates archive JSON
         archive = utils.read_json("participation_archive")
@@ -335,12 +345,12 @@ class Coop(interactions.Extension):
 
         running_coops = utils.read_json("running_coops")
         interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
+        ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner, admin, coop organizer and coop creator permissions
         if not (
-            checks.check_is_owner(ctx_author, self.pycord_bot)
+            await checks.check_is_owner(ctx_author, self.pycord_bot)
             or checks.check_is_admin(ctx_author)
             or checks.check_is_coop_organizer(ctx_author, ctx_guild)
             or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
@@ -372,12 +382,12 @@ class Coop(interactions.Extension):
 
         running_coops = utils.read_json("running_coops")
         interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
+        ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner, admin, coop organizer and coop creator permissions
         if not (
-            checks.check_is_owner(ctx_author, self.pycord_bot)
+            await checks.check_is_owner(ctx_author, self.pycord_bot)
             or checks.check_is_admin(ctx_author)
             or checks.check_is_coop_organizer(ctx_author, ctx_guild)
             or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
@@ -413,12 +423,12 @@ class Coop(interactions.Extension):
         
         running_coops = utils.read_json("running_coops")
         interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
+        ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner, admin, coop organizer and coop creator permissions
         if not (
-            checks.check_is_owner(ctx_author, self.pycord_bot)
+            await checks.check_is_owner(ctx_author, self.pycord_bot)
             or checks.check_is_admin(ctx_author)
             or checks.check_is_coop_organizer(ctx_author, ctx_guild)
             or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
@@ -440,7 +450,7 @@ class Coop(interactions.Extension):
         scope=GUILD_IDS,
         type=interactions.ApplicationCommandType.MESSAGE
     )
-    async def coop_failed(self, ctx: ComponentContext):
+    async def coop_failed_menu(self, ctx: ComponentContext):
         
         if not (coop_infos_tuple := checks.check_context_menu_coop_message(int(ctx.target.id))):
             await ctx.send(":warning: Not a coop message", ephemeral=True)
@@ -449,12 +459,12 @@ class Coop(interactions.Extension):
 
         running_coops = utils.read_json("running_coops")
         interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
+        ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
+        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner, admin, coop organizer and coop creator permissions
         if not (
-            checks.check_is_owner(ctx_author, self.pycord_bot)
+            await checks.check_is_owner(ctx_author, self.pycord_bot)
             or checks.check_is_admin(ctx_author)
             or checks.check_is_coop_organizer(ctx_author, ctx_guild)
             or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
@@ -484,8 +494,8 @@ class Coop(interactions.Extension):
             coop_nb = int(ctx.data.custom_id.split('_')[2])
 
             interac_guild = await ctx.get_guild()
-            ctx_guild: pycord.Guild = await self.pycord_bot.fetch_guild(int(interac_guild.id))
-            ctx_author: pycord.Member = await ctx_guild.fetch_member(int(ctx.author.user.id))
+            ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
+            ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
             author_id = ctx_author.id
             is_alt = False
@@ -494,7 +504,7 @@ class Coop(interactions.Extension):
             alt_dic = utils.read_json("alt_index")
             alt_role = pycord.utils.get(ctx_guild.roles, name="Alt")
             if alt_role in ctx.author.roles:
-                action_row = interactions.ActionRow(
+                action_row = interactions.ActionRow(components=[
                     interactions.Button(
                         style=interactions.ButtonStyle.SECONDARY,
                         label=f"{alt_dic[str(ctx_author.id)]['main']}",
@@ -505,7 +515,7 @@ class Coop(interactions.Extension):
                         label=f"{alt_dic[str(ctx_author.id)]['alt']}",
                         custom_id=f"alt-{uuid.uuid4()}"
                     )
-                )
+                ])
                 await ctx.send("Which account is joining ?", components=action_row, ephemeral=True)
 
                 try:
@@ -533,7 +543,7 @@ class Coop(interactions.Extension):
             prev_remaining_count = len(running_coops[contract_id]["remaining"])
             # If AFK and joins a coop, removes AFK role
             if author_id not in running_coops[contract_id]["remaining"]:
-                afk_role = pycord.utils.get(ctx.guild.roles, name="AFK")
+                afk_role = pycord.utils.get(ctx_guild.roles, name="AFK")
                 if not is_alt and afk_role in ctx_author.roles: # Alt doesn't count for AFK
                     await ctx_author.remove_roles(afk_role)
             # Updates running_coops JSON
@@ -556,8 +566,8 @@ class Coop(interactions.Extension):
             utils.save_json("running_coops", running_coops)
             utils.save_json("participation_archive", archive)
 
-            utils.update_coop_message(self.bot, self.pycord_bot, ctx_guild, contract_id, coop_nb)
-            utils.update_contract_message(self.bot, self.pycord_bot, ctx_guild, contract_id)
+            await utils.update_coop_message(self.bot, self.pycord_bot, ctx_guild, contract_id, coop_nb)
+            await utils.update_contract_message(self.bot, self.pycord_bot, ctx_guild, contract_id)
 
             # Sends coop code in hidden message
             await ctx_send.send(f"Code to join **Coop {coop_nb}** is: `{running_coops[contract_id]['coops'][coop_nb-1]['code']}`\n" +
@@ -575,7 +585,9 @@ class Coop(interactions.Extension):
         if not utils.read_guild_config(guild.id, "KEEP_COOP_CHANNELS"):
             await pycord.utils.get(guild.roles, name=f"{contract_id}-{coop_nb}").delete()
 
-            for channel in pycord.utils.get(guild.channels, id=running_coops[contract_id]["channel_id"]).category.text_channels:
+            ctx_channel = await guild.fetch_channel(running_coops[contract_id]["channel_id"])
+            ctx_category = await guild.fetch_channel(ctx_channel.category_id)
+            for channel in ctx_category.text_channels:
                 if channel.name == f"coop-{coop_nb}":
                     await channel.delete()
                     break
@@ -596,7 +608,7 @@ class Coop(interactions.Extension):
         running_coops[contract_id]["coops"][coop_nb-1]["completed_or_failed"] = "completed"
         utils.save_json("running_coops", running_coops)
 
-        utils.update_coop_message(self.bot, self.pycord_bot, guild, contract_id, coop_nb)
+        await utils.update_coop_message(self.bot, self.pycord_bot, guild, contract_id, coop_nb)
 
     async def execute_coop_failed(self, guild: pycord.Guild, contract_id, coop_nb):
         
@@ -629,7 +641,9 @@ class Coop(interactions.Extension):
         if not utils.read_guild_config(guild.id, "KEEP_COOP_CHANNELS"):
             await pycord.utils.get(guild.roles, name=f"{contract_id}-{coop_nb}").delete()
 
-            for channel in pycord.utils.get(guild.channels, id=running_coops[contract_id]["channel_id"]).category.text_channels:
+            ctx_channel = await guild.fetch_channel(running_coops[contract_id]["channel_id"])
+            ctx_category = await guild.fetch_channel(ctx_channel.category_id)
+            for channel in ctx_category.text_channels:
                 if channel.name == f"coop-{coop_nb}":
                     await channel.delete()
                     break
@@ -638,8 +652,8 @@ class Coop(interactions.Extension):
         utils.save_json("running_coops", running_coops)
         utils.save_json("participation_archive", archive)
 
-        utils.update_coop_message(self.bot, self.pycord_bot, guild, contract_id, coop_nb)
-        utils.update_contract_message(self.bot, self.pycord_bot, guild, contract_id)
+        await utils.update_coop_message(self.bot, self.pycord_bot, guild, contract_id, coop_nb)
+        await utils.update_contract_message(self.bot, self.pycord_bot, guild, contract_id)
 
     #endregion
 

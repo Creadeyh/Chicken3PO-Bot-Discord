@@ -1,6 +1,7 @@
 import discord as pycord
 from discord.ext import commands as pycord_commands
 import interactions
+from interactions.ext import wait_for
 
 import extensions.utils as utils
 
@@ -18,11 +19,13 @@ with open("config.json", "r") as f:
     TOKEN = config["TOKEN"]
     COMMAND_PREFIX = config["COMMAND_PREFIX"]
 
-pycord_bot = pycord_commands.Bot(command_prefix=COMMAND_PREFIX, intents=pycord_intents)
+pycord_bot = pycord_commands.Bot(command_prefix=COMMAND_PREFIX, intents=pycord_intents, auto_sync_commands=False)
 # RELEASE
-#bot = interactions.Client(token=TOKEN, intents=intents)
+bot = interactions.Client(token=TOKEN, intents=intents)
 # DEBUG
-bot = interactions.Client(token=TOKEN, intents=intents, disable_sync=True)
+# bot = interactions.Client(token=TOKEN, intents=intents, disable_sync=True)
+
+wait_for.setup(bot, add_method=True)
 
 bot.load("extensions.commands", None, pycord_bot)
 bot.load("extensions.contract", None, pycord_bot)
@@ -117,7 +120,7 @@ async def on_guild_member_remove(member: interactions.GuildMembers):
 
 #endregion
 
-#region Owner Commands
+#region Owner Commands (use in DM)
 
 @pycord_bot.command(name="reloadext")
 @pycord_commands.is_owner()
@@ -253,7 +256,7 @@ pycord_bot.remove_command("help")
 
 loop = asyncio.get_event_loop()
 
-task2 = loop.create_task(pycord_bot.start(TOKEN, bot=True))
+task2 = loop.create_task(pycord_bot.start(TOKEN))
 task1 = loop.create_task(bot._ready())
 
 gathered = asyncio.gather(task1, task2, loop=loop)
