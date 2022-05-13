@@ -1,5 +1,6 @@
 import discord as pycord
 import interactions
+from interactions import CommandContext
 
 import extensions.utils as utils
 
@@ -61,11 +62,13 @@ def check_context_menu_coop_message(target_message_id):
 
 #region Permissions checks
 
-async def check_is_owner(author: pycord.Member, pycord_bot: pycord.Client):
-    return await pycord_bot.is_owner(author)
+async def check_is_owner(ctx: CommandContext):
+    info = await ctx.client.get_current_bot_information()
+    return int(ctx.author.user.id) == int(info["owner"]["id"])
 
-def check_is_admin(author: pycord.Member):
-    return author.guild_permissions.administrator
+def check_is_admin(ctx: CommandContext):
+    # 8 is the administrator permission
+    return (int(ctx.author.permissions) & 8)
 
 def check_is_coop_organizer(author: pycord.Member, guild: pycord.Guild):
     organizer_role = pycord.utils.get(guild.roles, name="Coop Organizer")

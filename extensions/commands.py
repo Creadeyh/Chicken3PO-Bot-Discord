@@ -46,14 +46,14 @@ class Commands(interactions.Extension):
                 required=True
             )
         ])
-    async def register_alt_account(self, ctx: ComponentContext, member: interactions.Member, name_main: str, name_alt: str):
+    async def register_alt_account(self, ctx: CommandContext, member: interactions.Member, name_main: str, name_alt: str):
         
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
         ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner and admin permissions
-        if not (await checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author)):
+        if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx)):
             await ctx.send(":x: Unauthorized", ephemeral=True)
             return
 
@@ -90,14 +90,14 @@ class Commands(interactions.Extension):
                 required=True
             )
         ])
-    async def unregister_alt_account(self, ctx: ComponentContext, member: interactions.Member):
+    async def unregister_alt_account(self, ctx: CommandContext, member: interactions.Member):
 
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
         ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner and admin permissions
-        if not (await checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author)):
+        if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx)):
             await ctx.send(":x: Unauthorized", ephemeral=True)
             return
 
@@ -163,7 +163,7 @@ class Commands(interactions.Extension):
         ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner and admin permissions
-        if not (await checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author)):
+        if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx)):
             await ctx.send(":x: Unauthorized", ephemeral=True)
             return
 
@@ -201,7 +201,7 @@ class Commands(interactions.Extension):
         ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
         ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.id))
 
-        embed, action_row_buttons, action_row_select = self.load_help(0, 0, checks.check_is_admin(ctx_author))
+        embed, action_row_buttons, action_row_select = self.load_help(0, 0, checks.check_is_admin(ctx))
         await ctx.send(embeds=embed, components=[action_row_buttons, action_row_select], ephemeral=True)
 
     #endregion
@@ -221,14 +221,14 @@ class Commands(interactions.Extension):
                 category = int(split[2])
                 page = int(split[3])
 
-                embed, action_row_buttons, action_row_select = self.load_help(category, page, checks.check_is_admin(ctx_author))
+                embed, action_row_buttons, action_row_select = self.load_help(category, page, checks.check_is_admin(ctx))
                 await ctx.edit(embeds=embed, components=[action_row_buttons, action_row_select])
             
             elif ctx.data.custom_id.startswith("help_selectmenu"):
                 category = int(ctx.data.values[0])
                 page = 0
 
-                embed, action_row_buttons, action_row_select = self.load_help(category, page, checks.check_is_admin(ctx_author))
+                embed, action_row_buttons, action_row_select = self.load_help(category, page, checks.check_is_admin(ctx))
                 await ctx.edit(embeds=embed, components=[action_row_buttons, action_row_select])
 
     #endregion

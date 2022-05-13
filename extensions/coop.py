@@ -148,8 +148,8 @@ class Coop(interactions.Extension):
 
         # Owner, admin, coop organizer and coop creator permissions
         if not (
-            await checks.check_is_owner(ctx_author, self.pycord_bot)
-            or checks.check_is_admin(ctx_author)
+            await checks.check_is_owner(ctx)
+            or checks.check_is_admin(ctx)
             or checks.check_is_coop_organizer(ctx_author, ctx_guild)
             or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
         ):
@@ -190,8 +190,8 @@ class Coop(interactions.Extension):
 
         # Owner, admin, coop organizer and coop creator permissions
         if not (
-            await checks.check_is_owner(ctx_author, self.pycord_bot)
-            or checks.check_is_admin(ctx_author)
+            await checks.check_is_owner(ctx)
+            or checks.check_is_admin(ctx)
             or checks.check_is_coop_organizer(ctx_author, ctx_guild)
             or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
         ):
@@ -239,8 +239,8 @@ class Coop(interactions.Extension):
 
         # Owner, admin, coop organizer and coop creator permissions
         if not (
-            await checks.check_is_owner(ctx_author, self.pycord_bot)
-            or checks.check_is_admin(ctx_author)
+            await checks.check_is_owner(ctx)
+            or checks.check_is_admin(ctx)
             or checks.check_is_coop_organizer(ctx_author, ctx_guild)
             or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
         ):
@@ -350,8 +350,8 @@ class Coop(interactions.Extension):
 
         # Owner, admin, coop organizer and coop creator permissions
         if not (
-            await checks.check_is_owner(ctx_author, self.pycord_bot)
-            or checks.check_is_admin(ctx_author)
+            await checks.check_is_owner(ctx)
+            or checks.check_is_admin(ctx)
             or checks.check_is_coop_organizer(ctx_author, ctx_guild)
             or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
         ):
@@ -387,8 +387,8 @@ class Coop(interactions.Extension):
 
         # Owner, admin, coop organizer and coop creator permissions
         if not (
-            await checks.check_is_owner(ctx_author, self.pycord_bot)
-            or checks.check_is_admin(ctx_author)
+            await checks.check_is_owner(ctx)
+            or checks.check_is_admin(ctx)
             or checks.check_is_coop_organizer(ctx_author, ctx_guild)
             or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
         ):
@@ -428,8 +428,8 @@ class Coop(interactions.Extension):
 
         # Owner, admin, coop organizer and coop creator permissions
         if not (
-            await checks.check_is_owner(ctx_author, self.pycord_bot)
-            or checks.check_is_admin(ctx_author)
+            await checks.check_is_owner(ctx)
+            or checks.check_is_admin(ctx)
             or checks.check_is_coop_organizer(ctx_author, ctx_guild)
             or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
         ):
@@ -464,8 +464,8 @@ class Coop(interactions.Extension):
 
         # Owner, admin, coop organizer and coop creator permissions
         if not (
-            await checks.check_is_owner(ctx_author, self.pycord_bot)
-            or checks.check_is_admin(ctx_author)
+            await checks.check_is_owner(ctx)
+            or checks.check_is_admin(ctx)
             or checks.check_is_coop_organizer(ctx_author, ctx_guild)
             or checks.check_is_coop_creator(ctx_author, ctx_guild, contract_id, coop_nb)
         ):

@@ -59,7 +59,7 @@ class Contract(interactions.Extension):
         ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner, admin and coop organizer permissions
-        if not (await checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
+        if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
             await ctx.send(":x: Unauthorized", ephemeral=True)
             return
 
@@ -190,7 +190,7 @@ class Contract(interactions.Extension):
         ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner, admin and coop organizer permissions
-        if not (await checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
+        if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
             await ctx.send(":x: Unauthorized", ephemeral=True)
             return
 
@@ -220,7 +220,7 @@ class Contract(interactions.Extension):
         ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner, admin and coop organizer permissions
-        if not (await checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
+        if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
             await ctx.send(":x: Unauthorized", ephemeral=True)
             return
         
@@ -251,7 +251,7 @@ class Contract(interactions.Extension):
         ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner, admin and coop organizer permissions
-        if not (await checks.check_is_owner(ctx_author, self.pycord_bot) or checks.check_is_admin(ctx_author) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
+        if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
             await ctx.send(":x: Unauthorized", ephemeral=True)
             return
         
