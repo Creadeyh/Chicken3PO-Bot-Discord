@@ -4,24 +4,19 @@ import interactions
 from interactions import CommandContext, ComponentContext
 from interactions.ext.wait_for import *
 
-import extensions.checks as checks, extensions.utils as utils
+import extensions.db_connection as db, extensions.checks as checks, extensions.utils as utils
 
-import json
 from datetime import date
 import uuid
 
-with open("config.json", "r") as f:
-    config = json.load(f)
-    if config["guilds"]:
-        GUILD_IDS = list(map(int, config["guilds"].keys()))
-    else:
-        GUILD_IDS = []
+GUILD_IDS = db.load_db_connection().get_all_guild_ids()
 
 class Contract(interactions.Extension):
 
-    def __init__(self, bot, pycord_bot):
+    def __init__(self, bot, pycord_bot, db_connection):
         self.bot: interactions.Client = bot
         self.pycord_bot: pycord_commands.Bot = pycord_bot
+        self.db_connection: db.DatabaseConnection = db_connection
 
     #region Slash commands (any channel)
 
@@ -101,7 +96,7 @@ class Contract(interactions.Extension):
                     return True
             return False
         
-        guest_role = ctx_guild.get_role(utils.read_guild_config(ctx_guild.id, "GUEST_ROLE_ID"))
+        guest_role = ctx_guild.get_role(self.db_connection.get_guild_config_value(ctx_guild.id, "GUEST_ROLE_ID"))
         afk_role = pycord.utils.get(ctx_guild.roles, name="AFK")
         alt_role = pycord.utils.get(ctx_guild.roles, name="Alt")
         remaining_ids = []
@@ -266,17 +261,18 @@ class Contract(interactions.Extension):
 
     #region Events
 
-    @interactions.extension_listener("on_message_create")
-    async def on_message_create(self, message: interactions.Message):
-
-        if not message.author.bot:
-            running_coops = utils.read_json("running_coops")
+    # TODO
+    # @interactions.extension_listener(name="on_message_create")
+    # async def on_message_create(self, message: interactions.Message):
+        
+    #     if not message.author.bot:
+    #         running_coops = utils.read_json("running_coops")
             
-            for contract in running_coops.values():
-                if int(message.channel_id) == contract["channel_id"]:
-                    await message.delete()
+    #         for contract in running_coops.values():
+    #             if int(message.channel_id) == contract["channel_id"]:
+    #                 await message.delete()
 
-    @interactions.extension_listener("on_component")
+    @interactions.extension_listener(name="on_component")
     async def contract_already_done_event(self, ctx: ComponentContext):
         
         # Already done leggacy button
@@ -450,7 +446,7 @@ class Contract(interactions.Extension):
             count = 0
             no_count = 0
             i = 0
-            while count < utils.read_guild_config(guild.id, "COOPS_BEFORE_AFK") and i < len(date_dic):
+            while count < self.db_connection.get_guild_config_value(guild.id, "COOPS_BEFORE_AFK") and i < len(date_dic):
                 key = list(date_dic.keys())[i]
                 for coop in date_dic[key]:
                     if str(member.id) not in coop["participation"].keys():
@@ -460,7 +456,7 @@ class Contract(interactions.Extension):
                     if coop["participation"][str(member.id)] != "leggacy":
                         count = count + 1
                 i = i + 1
-            if no_count >= utils.read_guild_config(guild.id, "COOPS_BEFORE_AFK"):
+            if no_count >= self.db_connection.get_guild_config_value(guild.id, "COOPS_BEFORE_AFK"):
                 await member.add_roles(pycord.utils.get(guild.roles, name="AFK"))
         
         # Saves running_coops JSON
@@ -468,5 +464,5 @@ class Contract(interactions.Extension):
 
     #endregion
 
-def setup(bot, pycord_bot):
-    Contract(bot, pycord_bot)
+def setup(bot, pycord_bot, db_connection):
+    Contract(bot, pycord_bot, db_connection)

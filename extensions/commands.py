@@ -3,22 +3,18 @@ from discord.ext import commands as pycord_commands
 import interactions
 from interactions import CommandContext, ComponentContext
 
-import extensions.checks as checks, extensions.utils as utils
+import extensions.db_connection as db, extensions.checks as checks, extensions.utils as utils
 
 import json
 
-with open("config.json", "r") as f:
-    config = json.load(f)
-    if config["guilds"]:
-        GUILD_IDS = list(map(int, config["guilds"].keys()))
-    else:
-        GUILD_IDS = []
+GUILD_IDS = db.load_db_connection().get_all_guild_ids()
 
 class Commands(interactions.Extension):
 
-    def __init__(self, bot, pycord_bot):
+    def __init__(self, bot, pycord_bot, db_connection):
         self.bot: interactions.Client = bot
         self.pycord_bot: pycord_commands.Bot = pycord_bot
+        self.db_connection: db.DatabaseConnection = db_connection
     
     #region Alt account commands
 
@@ -50,7 +46,6 @@ class Commands(interactions.Extension):
         
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner and admin permissions
         if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx)):
@@ -94,7 +89,6 @@ class Commands(interactions.Extension):
 
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner and admin permissions
         if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx)):
@@ -160,7 +154,6 @@ class Commands(interactions.Extension):
 
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
         # Owner and admin permissions
         if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx)):
@@ -181,12 +174,8 @@ class Commands(interactions.Extension):
             else:
                 await ctx.send(":warning: Invalid value", ephemeral=True)
                 return
-            
-        with open("config.json", "r") as f:
-            config = json.load(f)
-        config["guilds"][str(ctx.guild_id)][setting] = value
-        with open("config.json", "w") as f:
-            json.dump(config, f, indent=4)
+
+        self.db_connection.set_guild_config_value(int(ctx.guild_id), setting, value)
 
         await ctx.send(f"Changed the value of {setting} to {value} :white_check_mark:", ephemeral=True)
 
@@ -197,10 +186,6 @@ class Commands(interactions.Extension):
     )
     async def help(self, ctx: CommandContext):
 
-        interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
-        ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.id))
-
         embed, action_row_buttons, action_row_select = self.load_help(0, 0, checks.check_is_admin(ctx))
         await ctx.send(embeds=embed, components=[action_row_buttons, action_row_select], ephemeral=True)
 
@@ -208,13 +193,10 @@ class Commands(interactions.Extension):
 
     #region Events
 
-    @interactions.extension_listener("on_component")
+    @interactions.extension_listener(name="on_component")
     async def help_event(self, ctx: ComponentContext):
 
         if ctx.data.custom_id.startswith("help_"):
-            interac_guild = await ctx.get_guild()
-            ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
-            ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.id))
 
             if ctx.data.custom_id.startswith("help_button_"):
                 split = ctx.data.custom_id.split("_")
@@ -246,7 +228,7 @@ class Commands(interactions.Extension):
         if help_dic[category]["pages"][page]["image_url"]:
             embed_image = interactions.EmbedImageStruct(
                     url=help_dic[category]["pages"][page]["image_url"]
-                )._json # TODO Remove ._json in next interactions version
+                )
         
         embed = interactions.Embed(
             title="__**Chicken3PO Commands**__",
@@ -321,5 +303,5 @@ class Commands(interactions.Extension):
 
     #endregion
 
-def setup(bot, pycord_bot):
-    Commands(bot, pycord_bot)
+def setup(bot, pycord_bot, db_connection):
+    Commands(bot, pycord_bot, db_connection)

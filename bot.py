@@ -3,10 +3,11 @@ from discord.ext import commands as pycord_commands
 import interactions
 from interactions.ext import wait_for
 
-import extensions.utils as utils
+import extensions.db_connection as db, extensions.utils as utils
 
 import json
 import asyncio
+import os
 
 #region Inits
 
@@ -14,10 +15,8 @@ pycord_intents = pycord.Intents.default()
 pycord_intents.members = True
 intents = interactions.Intents.DEFAULT | interactions.Intents.GUILD_MEMBERS
 
-with open("config.json", "r") as f:
-    config = json.load(f)
-    TOKEN = config["TOKEN"]
-    COMMAND_PREFIX = config["COMMAND_PREFIX"]
+TOKEN = utils.read_config("TOKEN")
+COMMAND_PREFIX = utils.read_config("COMMAND_PREFIX")
 
 pycord_bot = pycord_commands.Bot(command_prefix=COMMAND_PREFIX, intents=pycord_intents, auto_sync_commands=False)
 # RELEASE
@@ -27,9 +26,11 @@ bot = interactions.Client(token=TOKEN, intents=intents)
 
 wait_for.setup(bot, add_method=True)
 
-bot.load("extensions.commands", None, pycord_bot)
-bot.load("extensions.contract", None, pycord_bot)
-bot.load("extensions.coop", None, pycord_bot)
+db_connection = db.load_db_connection()
+
+bot.load("extensions.commands", None, pycord_bot, db_connection)
+bot.load("extensions.contract", None, pycord_bot, db_connection)
+bot.load("extensions.coop", None, pycord_bot, db_connection)
 
 #endregion
 
@@ -41,26 +42,30 @@ async def on_ready():
     print("Bot is ready")
 
 async def reload_extensions():
-    bot.reload("extensions.commands", None, pycord_bot)
-    bot.reload("extensions.contract", None, pycord_bot)
-    bot.reload("extensions.coop", None, pycord_bot)
+    bot.reload("extensions.commands", None, pycord_bot, db_connection)
+    bot.reload("extensions.contract", None, pycord_bot, db_connection)
+    bot.reload("extensions.coop", None, pycord_bot, db_connection)
 
+# FYI: Event is always fired for every guild at bot startup
 @bot.event
 async def on_guild_create(guild: interactions.Guild):
-    with open("config.json", "r") as f:
-        config = json.load(f)
-    if str(guild.id) not in config["guilds"].keys(): 
+
+    if int(guild.id) not in db_connection.get_all_guild_ids():
         # New guild registration
 
-        # Config file
-        config["guilds"][str(guild.id)] = {
+        # Guild config
+        db_connection.guild_config.insert_one({
+            "guild_id": int(guild.id),
             "COOPS_BEFORE_AFK": 3,
             "GUEST_ROLE_ID": "",
             "KEEP_COOP_CHANNELS": False
-            }
-        with open("config.json", "w") as f:
-            json.dump(config, f, indent=4)
+        })
         await reload_extensions()
+
+        # Data documents
+        db_connection.alt_index.insert_one({"guild_id": int(guild.id), "data": {}})
+        db_connection.running_coops.insert_one({"guild_id": int(guild.id), "data": {}})
+        db_connection.participation_archive.insert_one({"guild_id": int(guild.id), "data": {}})
         
         data = await bot._http.get_channel(guild.system_channel_id)
         main_channel = interactions.Channel(**data, _client=bot._http)
@@ -73,29 +78,31 @@ async def on_guild_create(guild: interactions.Guild):
 
         role_error = False
         bot_role = [role for role in guild.roles if role.name == bot.me.name]
-        if not bot_role:
+        if bot_role:
+            bot_role = bot_role[0]
+        else:
             await main_channel.send("ERROR: Bot role not found")
             return
 
-        if coop_role and coop_role.position > bot_role.position:
+        if coop_role and coop_role[0].position > bot_role.position:
             role_error = True
             await main_channel.send("Please move the Coop Organizer below the bot role")
         elif not coop_role:
             coop_role = await guild.create_role(name="Coop Organizer", mentionable=True, reason="Chicken3PO feature")
             await main_channel.send("Coop Organizer role created")
-        if creator_role and creator_role.position > bot_role.position:
+        if creator_role and creator_role[0].position > bot_role.position:
             role_error = True
             await main_channel.send("Please move the Coop Creator below the bot role")
         elif not creator_role:
             creator_role = await guild.create_role(name="Coop Creator", reason="Chicken3PO feature")
             await main_channel.send("Coop Creator role created")
-        if afk_role and afk_role.position > bot_role.position:
+        if afk_role and afk_role[0].position > bot_role.position:
             role_error = True
             await main_channel.send("Please move the AFK below the bot role")
         elif not afk_role:
             afk_role = await guild.create_role(name="AFK", reason="Chicken3PO feature")
             await main_channel.send("AFK role created")
-        if alt_role and alt_role.position > bot_role.position:
+        if alt_role and alt_role[0].position > bot_role.position:
             role_error = True
             await main_channel.send("Please move the Alt below the bot role")
         elif not alt_role:
@@ -110,13 +117,8 @@ async def on_guild_create(guild: interactions.Guild):
 @bot.event
 async def on_guild_member_remove(member: interactions.GuildMembers):
     if int(member.user.id) == int(bot.me.id):
-        with open("config.json", "r") as f:
-            config = json.load(f)
-        if str(member.guild_id) in config["guilds"].keys():
-            config["guilds"].pop(str(member.guild_id))
-            with open("config.json", "w") as f:
-                json.dump(config, f, indent=4)
-            await reload_extensions()
+        db_connection.guild_config.delete_one({"guild_id": member.guild_id})
+        await reload_extensions()
 
 #endregion
 
@@ -159,6 +161,7 @@ async def remove_from_server(ctx, id):
     else:
         await ctx.send(f"Left {guild.name} :wink:")
 
+#TODO Remove if access to Teddi's DB
 @pycord_bot.command(name="getdatafile")
 @pycord_commands.is_owner()
 async def get_data_file(ctx, filename):
@@ -175,6 +178,7 @@ async def get_data_file(ctx, filename):
         await ctx.send(f"Administrative error (#3) :confounded:\n```{type(inst)}\n{inst}```")
         return
 
+#TODO Remove if access to Teddi's DB
 @pycord_bot.command(name="modifydatafile")
 @pycord_commands.is_owner()
 async def modify_data_file(ctx, filename, key_path, value = None):
@@ -211,17 +215,71 @@ async def modify_data_file(ctx, filename, key_path, value = None):
         await ctx.send(f"Administrative error (#4) :confounded:\n```{type(inst)}\n{inst}```")
         return
 
-@pycord_bot.command(name="updateversion")
+@pycord_bot.command(name="update-data-version")
 @pycord_commands.is_owner()
-async def update_version(ctx):
+async def update_data_version(ctx: pycord_commands.Context):
     with open("config.json", "r") as f:
         config = json.load(f)
+
+    # Pre 1.3.7
+    if "BOT_VERSION" not in config.keys():
+
+        # Added database connection
+        config["DB_HOSTNAME"] = "localhost"
+        config["DB_PORT"] = 27017
+        config["DB_NAME"] = "test_database"
+
+        # Added version for update checks
+        config["BOT_VERSION"] = "1.3.7"
+        
+        with open("config.json", "w") as f:
+            json.dump(config, f, indent=4)
+        await ctx.send("Successfully updated data to 1.3.7 :white_check_mark:")
     
-    for guild_id in config["guilds"].keys():
-        config["guilds"][guild_id].pop("USE_EMBEDS", None)
+    elif config["BOT_VERSION"] == "1.3.7":
+        config["BOT_VERSION"] = "2.0.0"
+
+        # Removed embed support
+        for guild_id in config["guilds"].keys():
+            config["guilds"][guild_id].pop("USE_EMBEDS", None)
+
+        # Transfer guild config to DB
+        for guild_id, config_dic in config["guilds"].items():
+            insert = config_dic.copy()
+            insert["guild_id"] = int(guild_id)
+            db_connection.guild_config.insert_one(insert)
+        config.pop("guilds", None)
+
+        with open("config.json", "w") as f:
+            json.dump(config, f, indent=4)
+
+        # Transfer data files from JSON to DB
+        with open("data/alt_index.json", "r") as f:
+            alt_index = json.load(f)
+        db_connection.alt_index.insert_one({
+            "guild_id": db_connection.get_all_guild_ids()[0],
+            "data": alt_index
+        })
+        os.remove("data/alt_index.json")
+        with open("data/running_coops.json", "r") as f:
+            running_coops = json.load(f)
+        db_connection.running_coops.insert_one({
+            "guild_id": db_connection.get_all_guild_ids()[0],
+            "data": running_coops
+        })
+        os.remove("data/running_coops.json")
+        with open("data/participation_archive.json", "r") as f:
+            participation_archive = json.load(f)
+        db_connection.participation_archive.insert_one({
+            "guild_id": db_connection.get_all_guild_ids()[0],
+            "data": participation_archive
+        })
+        os.remove("data/participation_archive.json")
+
+        await ctx.send("Successfully updated data to 2.0.0 :white_check_mark:")
     
-    with open("config.json", "w") as f:
-        json.dump(config, f, indent=4)
+    else:
+        await ctx.send("No data update is needed")
 
 #endregion
 
@@ -233,20 +291,6 @@ async def on_command_error(ctx, error):
         await ctx.send("Something is missing from this command :thinking:")
     else:
         print(error)
-
-# @bot.event
-# async def on_slash_command_error(ctx, error):
-#     if isinstance(error, CheckFailure):
-#         if any(substring in ctx.name for substring in ["Remove contract", "Coop completed", "Coop failed"]):
-#             await ctx.send("Unauthorized target message :no_entry_sign:", hidden=True)
-#         elif discord.utils.get(ctx.guild.roles, name="AFK") in ctx.author.roles:
-#             await ctx.send("Unauthorized command as AFK :no_entry_sign:", hidden=True)
-#         else:
-#             await ctx.send("Unauthorized channel for this command :no_entry_sign:", hidden=True)
-#     elif isinstance(error, commands.CheckAnyFailure):
-#         await ctx.send("Unauthorized command :no_entry_sign:", hidden=True)
-#     else:
-#         print(error)
 
 #endregion
 

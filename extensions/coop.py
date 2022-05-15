@@ -4,24 +4,18 @@ import interactions
 from interactions import CommandContext, ComponentContext
 from interactions.ext.wait_for import *
 
-import extensions.checks as checks, extensions.utils as utils
+import extensions.db_connection as db, extensions.checks as checks, extensions.utils as utils
 
-import json
-from datetime import date
 import uuid
 
-with open("config.json", "r") as f:
-    config = json.load(f)
-    if config["guilds"]:
-        GUILD_IDS = list(map(int, config["guilds"].keys()))
-    else:
-        GUILD_IDS = []
+GUILD_IDS = db.load_db_connection().get_all_guild_ids()
 
 class Coop(interactions.Extension):
 
-    def __init__(self, bot, pycord_bot):
+    def __init__(self, bot, pycord_bot, db_connection):
         self.bot: interactions.Client = bot
         self.pycord_bot: pycord_commands.Bot = pycord_bot
+        self.db_connection: db.DatabaseConnection = db_connection
 
     #region Slash commands (contract channels)
     
@@ -485,7 +479,7 @@ class Coop(interactions.Extension):
 
     #region Events
 
-    @interactions.extension_listener("on_component")
+    @interactions.extension_listener(name="on_component")
     async def join_coop_event(self, ctx: ComponentContext):
         
         # Join coop button
@@ -582,7 +576,7 @@ class Coop(interactions.Extension):
         running_coops = utils.read_json("running_coops")
 
         # Deletes coop role and coop channel
-        if not utils.read_guild_config(guild.id, "KEEP_COOP_CHANNELS"):
+        if not self.db_connection.get_guild_config_value(guild.id, "KEEP_COOP_CHANNELS"):
             await pycord.utils.get(guild.roles, name=f"{contract_id}-{coop_nb}").delete()
 
             ctx_channel = await guild.fetch_channel(running_coops[contract_id]["channel_id"])
@@ -638,7 +632,7 @@ class Coop(interactions.Extension):
         running_coops[contract_id]["coops"][coop_nb-1]["members"] = []
 
         # Deletes coop role and coop channel
-        if not utils.read_guild_config(guild.id, "KEEP_COOP_CHANNELS"):
+        if not self.db_connection.get_guild_config_value(guild.id, "KEEP_COOP_CHANNELS"):
             await pycord.utils.get(guild.roles, name=f"{contract_id}-{coop_nb}").delete()
 
             ctx_channel = await guild.fetch_channel(running_coops[contract_id]["channel_id"])
@@ -657,5 +651,5 @@ class Coop(interactions.Extension):
 
     #endregion
 
-def setup(bot, pycord_bot):
-    Coop(bot, pycord_bot)
+def setup(bot, pycord_bot, db_connection):
+    Coop(bot, pycord_bot, db_connection)

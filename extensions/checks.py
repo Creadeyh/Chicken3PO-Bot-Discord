@@ -5,10 +5,11 @@ from interactions import CommandContext
 import extensions.utils as utils
 
 import json
+from typing import *
 
 #region Contract checks
 
-def check_contract_channel(channel_id):
+def check_contract_channel(channel_id: int) -> Union[int, Literal[False]]:
     """
     Returns the contract_id if channel is a contract channel,
     else returns False
@@ -19,7 +20,7 @@ def check_contract_channel(channel_id):
             return contract_id
     return False
 
-def check_context_menu_contract_message(target_message_id):
+def check_context_menu_contract_message(target_message_id: int) -> Union[int, Literal[False]]:
     """
     Returns the contract_id if target message is a contract message,
     else returns False
@@ -34,7 +35,7 @@ def check_context_menu_contract_message(target_message_id):
 
 #region Coop checks
 
-def check_coop_channel(channel_id):
+def check_coop_channel(channel_id: int) -> Union[Tuple[int, int], Literal[False]]:
     """
     Returns (contract_id, coop_nb) if channel is a coop channel,
     else returns False
@@ -46,7 +47,7 @@ def check_coop_channel(channel_id):
                 return contract_id, i+1
     return False
 
-def check_context_menu_coop_message(target_message_id):
+def check_context_menu_coop_message(target_message_id: int) -> Union[Tuple[int, int], Literal[False]]:
     """
     Returns (contract_id, coop_nb) if target message is a coop message,
     else returns False
@@ -74,7 +75,7 @@ def check_is_coop_organizer(author: pycord.Member, guild: pycord.Guild):
     organizer_role = pycord.utils.get(guild.roles, name="Coop Organizer")
     return organizer_role in author.roles
 
-def check_is_coop_creator(author: pycord.Member, guild: pycord.Guild, contract_id, coop_nb):
+def check_is_coop_creator(author: pycord.Member, guild: pycord.Guild, contract_id: str, coop_nb: int) -> bool:
     running_coops = utils.read_json("running_coops")
     creator_role = pycord.utils.get(guild.roles, name="Coop Creator")
     return creator_role in author.roles and author.id == running_coops[contract_id]["coops"][coop_nb-1]["creator"]

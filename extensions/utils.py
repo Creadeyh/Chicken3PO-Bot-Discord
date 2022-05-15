@@ -2,35 +2,41 @@ import discord as pycord
 import interactions
 
 import json
+from typing import *
 
 #region JSON utils
 
-JSON_PATH = "data/"
+# JSON_PATH = "data/"
 
-def read_guild_config(guild_id, key):
+def read_config(key: str) -> Union[str, int]:
     with open("config.json", "r") as f:
         config = json.load(f)
-    return config["guilds"][str(guild_id)][key]
+    return config[key]
 
-def read_json(name):
-    try:
-        with open(f"{JSON_PATH}{name}.json", "r") as f:
-            dic = json.load(f)
-    except FileNotFoundError:
-        dic = {}
-        with open(f"{JSON_PATH}{name}.json", "w") as f:
-            json.dump(dic, f, indent=4)
-    return dic
+# def read_guild_config(guild_id, key):
+#     with open("config.json", "r") as f:
+#         config = json.load(f)
+#     return config["guilds"][str(guild_id)][key]
 
-def save_json(name, dic):
-    with open(f"{JSON_PATH}{name}.json", "w") as f:
-        json.dump(dic, f, indent=4)
+# def read_json(name):
+#     try:
+#         with open(f"{JSON_PATH}{name}.json", "r") as f:
+#             dic = json.load(f)
+#     except FileNotFoundError:
+#         dic = {}
+#         with open(f"{JSON_PATH}{name}.json", "w") as f:
+#             json.dump(dic, f, indent=4)
+#     return dic
+
+# def save_json(name, dic):
+#     with open(f"{JSON_PATH}{name}.json", "w") as f:
+#         json.dump(dic, f, indent=4)
 
 #endregion
 
 #region Member utils
 
-async def get_member_mention(member_id, guild: pycord.Guild, bot: pycord.Client):
+async def get_member_mention(member_id: int, guild: pycord.Guild, bot: pycord.Client) -> str:
     # Id is an alt account
     if str(member_id).startswith("alt"):
         alt_dic = read_json("alt_index")
@@ -47,7 +53,7 @@ async def get_member_mention(member_id, guild: pycord.Guild, bot: pycord.Client)
     else:
         return guild.get_member(member_id).mention
 
-def is_member_active_in_any_running_coops(member_id):
+def is_member_active_in_any_running_coops(member_id: int) -> bool:
     running_coops = read_json("running_coops")
     for contract in running_coops.values():
         for coop in contract["coops"]:
@@ -59,7 +65,7 @@ def is_member_active_in_any_running_coops(member_id):
 
 #region Contract message utils
 
-async def generate_contract_message_content_component(pycord_bot: pycord.Client, guild: pycord.Guild, contract_id):
+async def generate_contract_message_content_component(pycord_bot: pycord.Client, guild: pycord.Guild, contract_id: str) -> Tuple[str, Union[interactions.Button, None]]:
     running_coops = read_json("running_coops")
 
     if contract_id not in running_coops.keys():
@@ -101,7 +107,7 @@ async def generate_contract_message_content_component(pycord_bot: pycord.Client,
 
     return content, button
 
-async def update_contract_message(bot: interactions.Client, pycord_bot: pycord.Client, guild: pycord.Guild, contract_id):
+async def update_contract_message(bot: interactions.Client, pycord_bot: pycord.Client, guild: pycord.Guild, contract_id) -> interactions.Message:
     running_coops = read_json("running_coops")
 
     if contract_id not in running_coops.keys():
@@ -117,7 +123,7 @@ async def update_contract_message(bot: interactions.Client, pycord_bot: pycord.C
 
 #region Coop message utils
 
-async def generate_coop_message_content_component(pycord_bot: pycord.Client, guild: pycord.Guild, contract_id, coop_nb):
+async def generate_coop_message_content_component(pycord_bot: pycord.Client, guild: pycord.Guild, contract_id: str, coop_nb: int) -> Tuple[str, Union[interactions.Button, None]]:
     running_coops = read_json("running_coops")
 
     if contract_id not in running_coops.keys():
@@ -178,7 +184,7 @@ async def generate_coop_message_content_component(pycord_bot: pycord.Client, gui
 
     return content, button
 
-async def update_coop_message(bot: interactions.Client, pycord_bot: pycord.Client, guild: pycord.Guild, contract_id, coop_nb):
+async def update_coop_message(bot: interactions.Client, pycord_bot: pycord.Client, guild: pycord.Guild, contract_id: str, coop_nb: int) -> interactions.Message:
     running_coops = read_json("running_coops")
 
     if contract_id not in running_coops.keys():
@@ -196,7 +202,7 @@ async def update_coop_message(bot: interactions.Client, pycord_bot: pycord.Clien
 
 #region Misc utils
 
-async def send_notif_no_remaining(guild: pycord.Guild, contract_id):
+async def send_notif_no_remaining(guild: pycord.Guild, contract_id: str):
     orga_role = pycord.utils.get(guild.roles, name="Coop Organizer")
 
     running_coops = read_json("running_coops")

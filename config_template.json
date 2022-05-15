@@ -1,7 +1,8 @@
 {
+    "BOT_VERSION": "2.0.0",
     "TOKEN": "[bot_token]",
     "COMMAND_PREFIX": "!",
-    "guilds": {
-        
-    }
+    "DB_HOSTNAME": "localhost",
+    "DB_PORT": 27017,
+    "DB_NAME": "test_database"
 }
