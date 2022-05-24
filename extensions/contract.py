@@ -5,11 +5,12 @@ from interactions import CommandContext, ComponentContext
 from interactions.ext.wait_for import *
 
 import extensions.db_connection as db, extensions.checks as checks, extensions.utils as utils
+from extensions.enums import CoopStatusEnum, ParticipationEnum
 
 from datetime import date
 import uuid
 
-GUILD_IDS = db.load_db_connection().get_all_guild_ids()
+GUILD_IDS = utils.load_db_connection().get_all_guild_ids()
 
 class Contract(interactions.Extension):
 
@@ -46,8 +47,6 @@ class Contract(interactions.Extension):
         ])
     async def add_contract(self, ctx: CommandContext, contract_id: str, size: int, is_leggacy: bool=False):
     
-        running_coops = utils.read_json("running_coops")
-        archive = utils.read_json("participation_archive")
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
         ctx_channel = ctx_guild.get_channel(int(ctx.channel_id))
@@ -58,10 +57,10 @@ class Contract(interactions.Extension):
             await ctx.send(":x: Unauthorized", ephemeral=True)
             return
 
-        if contract_id in running_coops.keys():
+        if self.db_connection.is_contract_running(int(interac_guild.id), contract_id):
             await ctx.send(":warning: Contract already exists", ephemeral=True)
             return
-        if not is_leggacy and contract_id in archive.keys():
+        if not is_leggacy and self.db_connection.is_contract_in_archive(int(interac_guild.id), contract_id):
             await ctx.send(":warning: Contract has to be a leggacy. Already registered in archive", ephemeral=True)
             return
         if size <= 1:
@@ -86,16 +85,10 @@ class Contract(interactions.Extension):
                 channel_overwrites[role] = pycord.PermissionOverwrite(view_channel=True)
 
         channel = await category.create_text_channel(contract_id, slowmode_delay=21600, overwrites=channel_overwrites)
+        data = await self.bot._http.get_channel(channel.id)
+        interac_channel = interactions.Channel(**data, _client=self.bot._http)
         
         # Gets people without the AFK role and who haven't done the contract already (according to bot archive)
-        def member_in_previous_coop(member_id):
-            if contract_id not in archive.keys():
-                return False
-            for contract in archive[contract_id].values():
-                if str(member_id) in contract["participation"].keys() and contract["participation"][str(member_id)] in ["yes", "leggacy"]:
-                    return True
-            return False
-        
         guest_role = ctx_guild.get_role(self.db_connection.get_guild_config_value(ctx_guild.id, "GUEST_ROLE_ID"))
         afk_role = pycord.utils.get(ctx_guild.roles, name="AFK")
         alt_role = pycord.utils.get(ctx_guild.roles, name="Alt")
@@ -109,57 +102,33 @@ class Contract(interactions.Extension):
                 else:
                     ids = [member.id]
                 for id in ids:
-                    if is_leggacy and member_in_previous_coop(id):
+                    if is_leggacy and self.db_connection.has_member_participated_in_previous_contract(int(interac_guild.id), contract_id, id):
                         already_done_ids.append(id)
                     elif afk_role in member.roles:
                         afk_ids.append(id)
                     else:
                         remaining_ids.append(id)
-        
-        
-        # Creates the contract in running_coops JSON
+
+        # Creates the contract in DB (running and archive)
         contract_date = date.today().strftime("%Y-%m-%d")
-        dic_contract = {
-            "size": size,
-            "date": contract_date,
-            "is_leggacy": is_leggacy,
-            "channel_id": channel.id,
-            "message_id": None,
-            "coops": [],
-            "remaining": remaining_ids
-        }
-        if is_leggacy:
-            dic_contract["already_done"] = already_done_ids
-        
-        running_coops[contract_id] = dic_contract
-        utils.save_json("running_coops", running_coops)
+        self.db_connection.create_contract_record(
+            int(interac_guild.id),
+            contract_id,
+            size,
+            contract_date,
+            is_leggacy,
+            int(interac_channel.id),
+            remaining_ids,
+            None,
+            already_done_ids,
+            afk_ids
+        )
 
         # Sends the contract message
-        content, button = await utils.generate_contract_message_content_component(self.pycord_bot, ctx_guild, contract_id)
-        data = await self.bot._http.get_channel(channel.id)
-        interac_channel = interactions.Channel(**data, _client=self.bot._http)
+        content, button = await utils.generate_contract_message_content_component(self.pycord_bot, self.db_connection, ctx_guild, contract_id)
         interac_message = await interac_channel.send(content=content, components=button)
 
-        running_coops[contract_id]["message_id"] = int(interac_message.id)
-        utils.save_json("running_coops", running_coops)
-
-        # Creates the contract in archive JSON
-        if not contract_id in archive.keys():
-            archive[contract_id] = {}
-        
-        participation = {}
-        for id in remaining_ids:
-            participation[str(id)] = "no"
-        for id in already_done_ids:
-            participation[str(id)] = "leggacy"
-        for id in afk_ids:
-            participation[str(id)] = "afk"
-        
-        archive[contract_id][contract_date] = {
-            "is_leggacy": is_leggacy,
-            "participation": participation
-        }
-        utils.save_json("participation_archive", archive)
+        self.db_connection.set_contract_message_id(int(interac_guild.id), contract_id, int(interac_message.id))
 
         # Responds to the interaction
         await ctx.send("Contract registered :white_check_mark:", ephemeral=True)
@@ -175,22 +144,24 @@ class Contract(interactions.Extension):
     )
     async def remove_contract_slash(self, ctx: CommandContext):
         
-        if not (contract_id := checks.check_contract_channel(int(ctx.channel_id))):
+        interac_guild = await ctx.get_guild()
+
+        if not (contract_id := checks.check_contract_channel(self.db_connection, int(interac_guild.id), int(ctx.channel_id))):
             await ctx.send(":warning: Not a contract channel", ephemeral=True)
             return
 
-        running_coops = utils.read_json("running_coops")
-        interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
         ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
+
+        contract_dic = self.db_connection.get_contract_data(int(interac_guild.id), contract_id)
 
         # Owner, admin and coop organizer permissions
         if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
             await ctx.send(":x: Unauthorized", ephemeral=True)
             return
 
-        for coop in running_coops[contract_id]["coops"]:
-            if not coop["completed_or_failed"]:
+        for coop in contract_dic["coops"]:
+            if coop["completed_or_failed"] == CoopStatusEnum.RUNNING.value:
                 await ctx.send(":warning: Some coops are still running", ephemeral=True)
                 return
         
@@ -205,14 +176,16 @@ class Contract(interactions.Extension):
     )
     async def get_coop_codes(self, ctx: ComponentContext):
 
-        if not (contract_id := checks.check_contract_channel(int(ctx.channel_id))):
+        interac_guild = await ctx.get_guild()
+
+        if not (contract_id := checks.check_contract_channel(self.db_connection, int(interac_guild.id), int(ctx.channel_id))):
             await ctx.send(":warning: Not a contract channel", ephemeral=True)
             return
         
-        running_coops = utils.read_json("running_coops")
-        interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
         ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
+
+        contract_dic = self.db_connection.get_contract_data(int(interac_guild.id), contract_id)
 
         # Owner, admin and coop organizer permissions
         if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
@@ -220,8 +193,8 @@ class Contract(interactions.Extension):
             return
         
         message = f"__**Coop codes for `{contract_id}`:**__\n"
-        for i in range(len(running_coops[contract_id]["coops"])):
-            message = message + f"- Coop {i+1}: `{running_coops[contract_id]['coops'][i]['code']}`\n"
+        for i in range(len(contract_dic["coops"])):
+            message = message + f"- Coop {i+1}: `{contract_dic['coops'][i]['code']}`\n"
 
         await ctx.send(message, ephemeral=True)
 
@@ -236,22 +209,24 @@ class Contract(interactions.Extension):
     )
     async def remove_contract_menu(self, ctx: ComponentContext):
         
-        if not (contract_id := checks.check_context_menu_contract_message(int(ctx.target.id))):
+        interac_guild = await ctx.get_guild()
+
+        if not (contract_id := checks.check_context_menu_contract_message(self.db_connection, int(interac_guild.id), int(ctx.target.id))):
             await ctx.send(":warning: Not a contract message", ephemeral=True)
             return
 
-        running_coops = utils.read_json("running_coops")
-        interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
         ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
+
+        contract_dic = self.db_connection.get_contract_data(int(interac_guild.id), contract_id)
 
         # Owner, admin and coop organizer permissions
         if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
             await ctx.send(":x: Unauthorized", ephemeral=True)
             return
         
-        for coop in running_coops[contract_id]["coops"]:
-            if not coop["completed_or_failed"]:
+        for coop in contract_dic["coops"]:
+            if coop["completed_or_failed"] == CoopStatusEnum.RUNNING.value:
                 await ctx.send(":warning: Some coops are still running", ephemeral=True)
                 return
         
@@ -261,16 +236,11 @@ class Contract(interactions.Extension):
 
     #region Events
 
-    # TODO
-    # @interactions.extension_listener(name="on_message_create")
-    # async def on_message_create(self, message: interactions.Message):
+    @interactions.extension_listener(name="on_message_create")
+    async def on_message_create(self, message: interactions.Message):
         
-    #     if not message.author.bot:
-    #         running_coops = utils.read_json("running_coops")
-            
-    #         for contract in running_coops.values():
-    #             if int(message.channel_id) == contract["channel_id"]:
-    #                 await message.delete()
+        if not message.author.bot and int(message.channel_id) in self.db_connection.get_all_contract_channel_ids():
+            await message.delete()
 
     @interactions.extension_listener(name="on_component")
     async def contract_already_done_event(self, ctx: ComponentContext):
@@ -284,20 +254,19 @@ class Contract(interactions.Extension):
             ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
             author_id = ctx_author.id
-
+            
             # Check for alt
-            alt_dic = utils.read_json("alt_index")
             alt_role = pycord.utils.get(ctx_guild.roles, name="Alt")
             if alt_role in ctx_author.roles:
                 action_row = interactions.ActionRow(components=[
                     interactions.Button(
                         style=interactions.ButtonStyle.SECONDARY,
-                        label=f"{alt_dic[str(ctx_author.id)]['main']}",
+                        label=self.db_connection.get_alt_main_name(int(interac_guild.id), ctx_author.id),
                         custom_id=f"main-{uuid.uuid4()}"
                     ),
                     interactions.Button(
                         style=interactions.ButtonStyle.SECONDARY,
-                        label=f"{alt_dic[str(ctx_author.id)]['alt']}",
+                        label=self.db_connection.get_alt_alt_name(int(interac_guild.id), ctx_author.id),
                         custom_id=f"alt-{uuid.uuid4()}"
                     )
                 ])
@@ -314,37 +283,31 @@ class Contract(interactions.Extension):
             else:
                 ctx_send = ctx
 
-            running_coops = utils.read_json("running_coops")
-            for coop in running_coops[contract_id]["coops"]:
+            contract_dic = self.db_connection.get_contract_data(int(interac_guild.id), contract_id)
+            for coop in contract_dic["coops"]:
                 if author_id in coop["members"]:
                     await ctx_send.send("You have already joined a coop for this contract :smile:", ephemeral=True)
                     return
 
-            if author_id in running_coops[contract_id]["already_done"]:
+            if author_id in contract_dic["already_done"]:
                 # Removes the player from already done
                 
-                archive = utils.read_json("participation_archive")
-                for date, occurrence in archive[contract_id].items():
+                archive = self.db_connection.get_contract_archive(int(interac_guild.id), contract_id)
+                for date, occurrence in archive.items():
                     if (
-                        date != running_coops[contract_id]["date"] and
+                        date != contract_dic["date"] and
                         str(author_id) in occurrence["participation"].keys() and
-                        occurrence["participation"][str(author_id)] != "no"
+                        occurrence["participation"][str(author_id)] != ParticipationEnum.NO.value
                     ):
                         await ctx_send.send("I know from a trusted source you have done this contract :smile:", ephemeral=True)
                         return
 
-                # Updates running_coops JSON
-                running_coops[contract_id]["remaining"].append(author_id)
-                running_coops[contract_id]["already_done"].remove(author_id)
+                # Updates DB
+                self.db_connection.add_member_remaining(author_id)
+                self.db_connection.remove_member_already_done(author_id)
+                self.db_connection.set_member_participation(int(interac_guild.id), contract_id, contract_dic["date"], author_id, ParticipationEnum.NO)
 
-                # Updates archive JSON
-                archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(author_id)] = "no"
-
-                # Saves JSONs
-                utils.save_json("running_coops", running_coops)
-                utils.save_json("participation_archive", archive)
-
-                await utils.update_contract_message(self.bot, self.pycord_bot, ctx_guild, contract_id)
+                await utils.update_contract_message(self.bot, self.pycord_bot, self.db_connection, ctx_guild, contract_id)
 
                 # Responds to the interaction
                 await ctx_send.send(f"Removed you from already done :white_check_mark:", ephemeral=True)
@@ -377,24 +340,19 @@ class Contract(interactions.Extension):
                 else:
                     ctx_send = answer
             
-                # Updates running_coops JSON
-                if author_id in running_coops[contract_id]["remaining"]:
-                    running_coops[contract_id]["remaining"].remove(author_id)
-                running_coops[contract_id]["already_done"].append(author_id)
+                # Updates running_coops
+                if author_id in contract_dic["remaining"]:
+                    self.db_connection.remove_member_remaining(int(interac_guild.id), contract_id, author_id)
+                self.db_connection.add_member_already_done(int(interac_guild.id), contract_id, author_id)
 
                 # Notif to coop organizers
-                if len(running_coops[contract_id]["remaining"]) == 0:
-                    await utils.send_notif_no_remaining(ctx_guild, contract_id)
+                if self.db_connection.get_nb_remaining(int(interac_guild.id), contract_id) == 0:
+                    await utils.send_notif_no_remaining(self.db_connection, ctx_guild, contract_id)
 
-                # Updates archive JSON
-                archive = utils.read_json("participation_archive")
-                archive[contract_id][ running_coops[contract_id]["date"] ]["participation"][str(author_id)] = "leggacy"
+                # Updates archive
+                self.db_connection.set_member_participation(int(interac_guild.id), contract_id, contract_dic["date"], author_id, ParticipationEnum.LEGGACY)
 
-                # Saves JSONs
-                utils.save_json("running_coops", running_coops)
-                utils.save_json("participation_archive", archive)
-
-                await utils.update_contract_message(self.bot, self.pycord_bot, ctx_guild, contract_id)
+                await utils.update_contract_message(self.bot, self.pycord_bot, self.db_connection, ctx_guild, contract_id)
 
                 # Responds to the interaction
                 await ctx_send.send(f"Marked you as already done :white_check_mark:", ephemeral=True)
@@ -403,12 +361,12 @@ class Contract(interactions.Extension):
 
     #region Misc methods
 
-    async def execute_remove_contract(self, guild: pycord.Guild, contract_id):
+    async def execute_remove_contract(self, guild: pycord.Guild, contract_id: str):
 
-        running_coops = utils.read_json("running_coops")
+        contract_dic = self.db_connection.get_contract_data(guild.id, contract_id)
 
         # Deletes contract channel, category, and all coop channels and roles leftover
-        contract_channel = await guild.fetch_channel(running_coops[contract_id]["channel_id"])
+        contract_channel = await guild.fetch_channel(contract_dic["channel_id"])
         contract_category = await guild.fetch_channel(contract_channel.category_id)
 
         for channel in contract_category.channels:
@@ -420,28 +378,17 @@ class Contract(interactions.Extension):
         await contract_category.delete()
         await contract_channel.delete()
 
-        # Updates running_coops JSON
-        running_coops.pop(contract_id)
+        # DB update
+        self.db_connection.remove_running_contract(guild.id, contract_id)
 
         # Checks for new AFK
-        archive = utils.read_json("participation_archive")
-        date_dic = {}
-        for id, occurrences in archive.items():
-            for date, occurrence in occurrences.items():
-                # If the contract occurrence is still running, ignore
-                if id in running_coops.keys() and date == running_coops[id]["date"]:
-                    continue
-                # Else
-                if date not in date_dic.keys():
-                    date_dic[date] = []
-                date_dic[date].append(occurrence)
-        # Sorts by date
-        date_dic = dict(sorted(date_dic.items(), reverse=True))
+        
+        date_dic = self.db_connection.get_archive_by_date(guild.id)
         # If members has not participated in last number of archived coops defined in COOPS_BEFORE_AFK (excluding already done leggacies),
         # and has not joined one of the running coops, gives him AFK role
         # Alt accounts are not taken into account
         for member in guild.members:
-            if utils.is_member_active_in_any_running_coops(member.id):
+            if utils.is_member_active_in_any_running_coops(member.id, self.db_connection, guild.id):
                 continue
             count = 0
             no_count = 0
@@ -451,16 +398,13 @@ class Contract(interactions.Extension):
                 for coop in date_dic[key]:
                     if str(member.id) not in coop["participation"].keys():
                         continue
-                    if coop["participation"][str(member.id)] in ["no", "afk"]:
+                    if coop["participation"][str(member.id)] in [ParticipationEnum.NO.value, ParticipationEnum.AFK.value]:
                         no_count = no_count + 1
-                    if coop["participation"][str(member.id)] != "leggacy":
+                    if coop["participation"][str(member.id)] != ParticipationEnum.LEGGACY.value:
                         count = count + 1
                 i = i + 1
             if no_count >= self.db_connection.get_guild_config_value(guild.id, "COOPS_BEFORE_AFK"):
                 await member.add_roles(pycord.utils.get(guild.roles, name="AFK"))
-        
-        # Saves running_coops JSON
-        utils.save_json("running_coops", running_coops)
 
     #endregion
 

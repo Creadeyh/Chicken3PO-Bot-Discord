@@ -4,10 +4,11 @@ import interactions
 from interactions import CommandContext, ComponentContext
 
 import extensions.db_connection as db, extensions.checks as checks, extensions.utils as utils
+from extensions.enums import ParticipationEnum
 
 import json
 
-GUILD_IDS = db.load_db_connection().get_all_guild_ids()
+GUILD_IDS = utils.load_db_connection().get_all_guild_ids()
 
 class Commands(interactions.Extension):
 
@@ -64,12 +65,7 @@ class Commands(interactions.Extension):
 
         await pycord_member.add_roles(alt_role)
 
-        alt_dic = utils.read_json("alt_index")
-        alt_dic[str(pycord_member.id)] = {
-            "main": name_main,
-            "alt": name_alt
-        }
-        utils.save_json("alt_index", alt_dic)
+        self.db_connection.add_alt_account(int(interac_guild.id), int(member.id), name_main, name_alt)
 
         await ctx.send("Alt account registered :white_check_mark:", ephemeral=True)
 
@@ -107,9 +103,7 @@ class Commands(interactions.Extension):
 
         await pycord_member.remove_roles(alt_role)
 
-        alt_dic = utils.read_json("alt_index")
-        alt_dic.pop(str(member.id))
-        utils.save_json("alt_index", alt_dic)
+        self.db_connection.remove_alt_account(int(interac_guild.id), int(member.id))
 
         await ctx.send("Alt account unregistered :white_check_mark:", ephemeral=True)
 
@@ -152,9 +146,6 @@ class Commands(interactions.Extension):
     )
     async def settings(self, ctx: CommandContext, setting: str, value):
 
-        interac_guild = await ctx.get_guild()
-        ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
-
         # Owner and admin permissions
         if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx)):
             await ctx.send(":x: Unauthorized", ephemeral=True)
@@ -181,7 +172,7 @@ class Commands(interactions.Extension):
 
     @interactions.extension_command(
         name="help",
-        description="Help command",
+        description="Chicken3PO help command",
         scope=GUILD_IDS
     )
     async def help(self, ctx: CommandContext):

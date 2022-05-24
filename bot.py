@@ -3,7 +3,7 @@ from discord.ext import commands as pycord_commands
 import interactions
 from interactions.ext import wait_for
 
-import extensions.db_connection as db, extensions.utils as utils
+import extensions.utils as utils
 
 import json
 import asyncio
@@ -26,7 +26,7 @@ bot = interactions.Client(token=TOKEN, intents=intents)
 
 wait_for.setup(bot, add_method=True)
 
-db_connection = db.load_db_connection()
+db_connection = utils.load_db_connection()
 
 bot.load("extensions.commands", None, pycord_bot, db_connection)
 bot.load("extensions.contract", None, pycord_bot, db_connection)
@@ -118,6 +118,9 @@ async def on_guild_create(guild: interactions.Guild):
 async def on_guild_member_remove(member: interactions.GuildMembers):
     if int(member.user.id) == int(bot.me.id):
         db_connection.guild_config.delete_one({"guild_id": member.guild_id})
+        db_connection.alt_index.delete_one({"guild_id": member.guild_id})
+        db_connection.running_coops.delete_one({"guild_id": member.guild_id})
+        db_connection.participation_archive.delete_one({"guild_id": member.guild_id})
         await reload_extensions()
 
 #endregion
@@ -162,58 +165,58 @@ async def remove_from_server(ctx, id):
         await ctx.send(f"Left {guild.name} :wink:")
 
 #TODO Remove if access to Teddi's DB
-@pycord_bot.command(name="getdatafile")
-@pycord_commands.is_owner()
-async def get_data_file(ctx, filename):
+# @pycord_bot.command(name="getdatafile")
+# @pycord_commands.is_owner()
+# async def get_data_file(ctx, filename):
 
-    dm_channel = ctx.author.dm_channel
-    if dm_channel == None:
-        await ctx.author.create_dm()
-        dm_channel = ctx.author.dm_channel
+#     dm_channel = ctx.author.dm_channel
+#     if dm_channel == None:
+#         await ctx.author.create_dm()
+#         dm_channel = ctx.author.dm_channel
     
-    try:
-        with open(f"data/{filename}.json", "rb") as f:
-            await dm_channel.send(file=pycord.File(f))
-    except Exception as inst:
-        await ctx.send(f"Administrative error (#3) :confounded:\n```{type(inst)}\n{inst}```")
-        return
+#     try:
+#         with open(f"data/{filename}.json", "rb") as f:
+#             await dm_channel.send(file=pycord.File(f))
+#     except Exception as inst:
+#         await ctx.send(f"Administrative error (#3) :confounded:\n```{type(inst)}\n{inst}```")
+#         return
 
 #TODO Remove if access to Teddi's DB
-@pycord_bot.command(name="modifydatafile")
-@pycord_commands.is_owner()
-async def modify_data_file(ctx, filename, key_path, value = None):
+# @pycord_bot.command(name="modifydatafile")
+# @pycord_commands.is_owner()
+# async def modify_data_file(ctx, filename, key_path, value = None):
 
-    try:
-        file = utils.read_json(filename)
+#     try:
+#         file = utils.read_json(filename)
 
-        data = file
-        keys = key_path.split("/")
-        i = 1
-        while i < len(keys):
-            if keys[i-1].isnumeric():
-                data = data[int(keys[i-1])]
-            else:
-                data = data[keys[i-1]]
-            i += 1
+#         data = file
+#         keys = key_path.split("/")
+#         i = 1
+#         while i < len(keys):
+#             if keys[i-1].isnumeric():
+#                 data = data[int(keys[i-1])]
+#             else:
+#                 data = data[keys[i-1]]
+#             i += 1
         
-        if value == None:
-            if type(data) == list:
-                data.pop(keys[-1])
-            else:
-                raise Exception
-        elif value.isnumeric():
-            data[keys[-1]] = int(value)
-        elif value.lower() == "true":
-            data[keys[-1]] = True
-        elif value.lower() == "false":
-            data[keys[-1]] = False
-        else:
-            data[keys[-1]] = value
+#         if value == None:
+#             if type(data) == list:
+#                 data.pop(keys[-1])
+#             else:
+#                 raise Exception
+#         elif value.isnumeric():
+#             data[keys[-1]] = int(value)
+#         elif value.lower() == "true":
+#             data[keys[-1]] = True
+#         elif value.lower() == "false":
+#             data[keys[-1]] = False
+#         else:
+#             data[keys[-1]] = value
         
-        utils.save_json(filename, file)
-    except Exception as inst:
-        await ctx.send(f"Administrative error (#4) :confounded:\n```{type(inst)}\n{inst}```")
-        return
+#         utils.save_json(filename, file)
+#     except Exception as inst:
+#         await ctx.send(f"Administrative error (#4) :confounded:\n```{type(inst)}\n{inst}```")
+#         return
 
 @pycord_bot.command(name="update-data-version")
 @pycord_commands.is_owner()
