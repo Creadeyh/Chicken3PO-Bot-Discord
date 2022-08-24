@@ -13,6 +13,7 @@ import os
 
 pycord_intents = pycord.Intents.default()
 pycord_intents.members = True
+pycord_intents.message_content = True
 intents = interactions.Intents.DEFAULT | interactions.Intents.GUILD_MEMBERS
 
 TOKEN = utils.read_config("TOKEN")
@@ -117,10 +118,10 @@ async def on_guild_create(guild: interactions.Guild):
 @bot.event
 async def on_guild_member_remove(member: interactions.GuildMembers):
     if int(member.user.id) == int(bot.me.id):
-        db_connection.guild_config.delete_one({"guild_id": member.guild_id})
-        db_connection.alt_index.delete_one({"guild_id": member.guild_id})
-        db_connection.running_coops.delete_one({"guild_id": member.guild_id})
-        db_connection.participation_archive.delete_one({"guild_id": member.guild_id})
+        db_connection.guild_config.delete_one({"guild_id": int(member.guild_id)})
+        db_connection.alt_index.delete_one({"guild_id": int(member.guild_id)})
+        db_connection.running_coops.delete_one({"guild_id": int(member.guild_id)})
+        db_connection.participation_archive.delete_one({"guild_id": int(member.guild_id)})
         await reload_extensions()
 
 #endregion

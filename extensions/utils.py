@@ -57,12 +57,17 @@ async def get_member_mention(member_id: int, guild: pycord.Guild, bot: pycord.Cl
         return guild.get_member(member_id).mention
 
 def is_member_active_in_any_running_coops(member_id: int, db_connection: db.DatabaseConnection, guild_id: int) -> bool:
-    running_coops = db_connection.get_running_dic(guild_id)
-    for contract in running_coops.values():
-        for coop in contract["coops"]:
-            if member_id in coop["members"]:
-                return True
-    return False
+    # running_coops = db_connection.get_running_dic(guild_id)
+    # for contract in running_coops.values():
+    #     for coop in contract["coops"]:
+    #         if member_id in coop["members"]:
+    #             return True
+    # return False
+
+    if db_connection.running_coops.find_one({"guild_id": guild_id, "coops.members": member_id}) != None:
+        return True
+    else:
+        return False
 
 #endregion
 
@@ -73,7 +78,7 @@ async def generate_contract_message_content_component(pycord_bot: pycord.Client,
     if not db_connection.is_contract_running(guild.id, contract_id):
         raise Exception("contract_id is not running")
 
-    contract_dic = db_connection.get_contract_data(guild.id, contract_id)
+    contract_dic = db_connection.get_running_contract(guild.id, contract_id)
     is_leggacy = contract_dic["is_leggacy"]
 
     if is_leggacy:
@@ -120,7 +125,7 @@ async def update_contract_message(
     if not db_connection.is_contract_running(guild.id, contract_id):
         raise Exception("contract_id is not running")
 
-    contract_dic = db_connection.get_contract_data(guild.id, contract_id)
+    contract_dic = db_connection.get_running_contract(guild.id, contract_id)
 
     data = await bot._http.get_message(contract_dic["channel_id"], contract_dic["message_id"])
     message: interactions.Message = interactions.Message(**data, _client=bot._http)
@@ -142,7 +147,7 @@ async def generate_coop_message_content_component(
     if not db_connection.is_contract_running(guild.id, contract_id):
         raise Exception("contract_id is not running")
 
-    contract_dic = db_connection.get_contract_data(guild.id, contract_id)
+    contract_dic = db_connection.get_running_contract(guild.id, contract_id)
 
     if coop_nb > len(contract_dic["coops"]):
         raise Exception("Invalid coop number")
@@ -211,7 +216,7 @@ async def update_coop_message(
     if not db_connection.is_contract_running(guild.id, contract_id):
         raise Exception("contract_id is not running")
 
-    contract_dic = db_connection.get_contract_data(guild.id, contract_id)
+    contract_dic = db_connection.get_running_contract(guild.id, contract_id)
 
     if coop_nb > len(contract_dic["coops"]):
         raise Exception("Invalid coop number")
@@ -229,7 +234,7 @@ async def update_coop_message(
 async def send_notif_no_remaining(db_connection: db.DatabaseConnection, guild: pycord.Guild, contract_id: str):
     orga_role = pycord.utils.get(guild.roles, name="Coop Organizer")
 
-    contract_dic = db_connection.get_contract_data(guild.id, contract_id)
+    contract_dic = db_connection.get_running_contract(guild.id, contract_id)
     contract_channel = guild.get_channel(contract_dic["channel_id"])
     
     await contract_channel.send(f"{orga_role.mention} Everyone has joined a coop for this contract :tada:")

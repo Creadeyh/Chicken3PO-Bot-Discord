@@ -153,7 +153,7 @@ class Contract(interactions.Extension):
         ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
         ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
-        contract_dic = self.db_connection.get_contract_data(int(interac_guild.id), contract_id)
+        contract_dic = self.db_connection.get_running_contract(int(interac_guild.id), contract_id)
 
         # Owner, admin and coop organizer permissions
         if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
@@ -185,7 +185,7 @@ class Contract(interactions.Extension):
         ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
         ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
-        contract_dic = self.db_connection.get_contract_data(int(interac_guild.id), contract_id)
+        contract_dic = self.db_connection.get_running_contract(int(interac_guild.id), contract_id)
 
         # Owner, admin and coop organizer permissions
         if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
@@ -218,7 +218,7 @@ class Contract(interactions.Extension):
         ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
         ctx_author: pycord.Member = ctx_guild.get_member(int(ctx.author.user.id))
 
-        contract_dic = self.db_connection.get_contract_data(int(interac_guild.id), contract_id)
+        contract_dic = self.db_connection.get_running_contract(int(interac_guild.id), contract_id)
 
         # Owner, admin and coop organizer permissions
         if not (await checks.check_is_owner(ctx) or checks.check_is_admin(ctx) or checks.check_is_coop_organizer(ctx_author, ctx_guild)):
@@ -239,7 +239,7 @@ class Contract(interactions.Extension):
     @interactions.extension_listener(name="on_message_create")
     async def on_message_create(self, message: interactions.Message):
         
-        if not message.author.bot and int(message.channel_id) in self.db_connection.get_all_contract_channel_ids():
+        if not message.author.bot and int(message.channel_id) in self.db_connection.get_all_contract_channel_ids(int(message.guild_id)):
             await message.delete()
 
     @interactions.extension_listener(name="on_component")
@@ -283,7 +283,7 @@ class Contract(interactions.Extension):
             else:
                 ctx_send = ctx
 
-            contract_dic = self.db_connection.get_contract_data(int(interac_guild.id), contract_id)
+            contract_dic = self.db_connection.get_running_contract(int(interac_guild.id), contract_id)
             for coop in contract_dic["coops"]:
                 if author_id in coop["members"]:
                     await ctx_send.send("You have already joined a coop for this contract :smile:", ephemeral=True)
@@ -363,7 +363,7 @@ class Contract(interactions.Extension):
 
     async def execute_remove_contract(self, guild: pycord.Guild, contract_id: str):
 
-        contract_dic = self.db_connection.get_contract_data(guild.id, contract_id)
+        contract_dic = self.db_connection.get_running_contract(guild.id, contract_id)
 
         # Deletes contract channel, category, and all coop channels and roles leftover
         contract_channel = await guild.fetch_channel(contract_dic["channel_id"])

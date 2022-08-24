@@ -88,25 +88,25 @@ class DatabaseConnection():
 
 #region Contract checks
 
-    def is_contract_running(self, guild_id: int, contract_id: str) -> Union[bool, None]:
-        if (doc := self.running_coops.find_one({"guild_id": guild_id})):
-            return contract_id in doc["data"].keys()
+    def is_contract_running(self, guild_id: int, contract_id: str) -> bool:
+        if self.running_coops.find_one({"guild_id": guild_id, "contract_id": contract_id}) != None:
+            return True
         else:
-            return None
+            return False
     
-    def is_contract_in_archive(self, guild_id: int, contract_id: str) -> Union[bool, None]:
-        if (doc := self.participation_archive.find_one({"guild_id": guild_id})):
-            return contract_id in doc["data"].keys()
+    def is_contract_in_archive(self, guild_id: int, contract_id: str) -> bool:
+        if self.participation_archive.find_one({"guild_id": guild_id, "contract_id": contract_id}) != None:
+            return True
         else:
-            return None
+            return False
     
     def has_member_participated_in_previous_contract(self, guild_id: int, contract_id: str, member_id: int) -> Union[bool, None]:
-        if (doc := self.participation_archive.find_one({"guild_id": guild_id})) and contract_id not in doc["data"].keys():
+        if (doc := self.participation_archive.find_one({"guild_id": guild_id, "contract_id": contract_id})) != None:
             return None
-        for contract in doc["data"][contract_id].values():
+        for occurence in doc["data"].values():
             if (
-                str(member_id) in contract["participation"].keys()
-                and contract["participation"][str(member_id)] in [ParticipationEnum.YES.value, ParticipationEnum.LEGGACY.value]
+                str(member_id) in occurence["participation"].keys()
+                and occurence["participation"][str(member_id)] in [ParticipationEnum.YES.value, ParticipationEnum.LEGGACY.value]
             ):
                 return True
         return False
@@ -115,41 +115,26 @@ class DatabaseConnection():
 
 #region Contract getters
 
-    def get_running_dic(self, guild_id: int) -> Union[Dict, None]:
-        if (doc := self.running_coops.find_one({"guild_id": guild_id})) != None:
-            return doc["data"].copy()
-        else:
-            return None
-
-    def get_contract_data(self, guild_id: int, contract_id: str) -> Union[Dict, None]:
-        if (doc := self.running_coops.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}": {
-                    "$exists": 1
-                }
-            }
-        )) != None:
-            return doc["data"][contract_id].copy()
+    def get_running_contract(self, guild_id: int, contract_id: str) -> Union[Dict, None]:
+        if (doc := self.running_coops.find_one({"guild_id": guild_id, "contract_id": contract_id})) != None:
+            return doc.copy()
         else:
             return None
     
     def get_all_contract_channel_ids(self, guild_id: int) -> Union[List[int], None]:
-        if (doc := self.running_coops.find_one({"guild_id": guild_id})) != None:
-            return [contract["channel_id"] for contract in doc["data"].values()]
+        # if (doc := self.running_coops.find_one({"guild_id": guild_id})) != None:
+        #     return [contract["channel_id"] for contract in doc["data"].values()]
+        # else:
+        #     return None
+        #TODO check cursor behavior
+        if (cursor := self.running_coops.find({"guild_id": guild_id})) != None:
+            return [contract["channel_id"] for contract in cursor]
         else:
             return None
 
     def get_nb_remaining(self, guild_id: int, contract_id: str) -> Union[int, None]:
-        if (doc := self.running_coops.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}": {
-                    "$exists": 1
-                }
-            }
-        )) != None:
-            return len(doc["data"][contract_id]["remaining"])
+        if (doc := self.running_coops.find_one({"guild_id": guild_id, "contract_id": contract_id})) != None:
+            return len(doc["remaining"])
         else:
             return None
 
@@ -171,6 +156,8 @@ class DatabaseConnection():
         afk_ids: List[int] = []
     ):
         new_dic = {
+            "guild_id": guild_id,
+            "contract_id": contract_id,
             "size": size,
             "date": date,
             "is_leggacy": is_leggacy,
@@ -182,25 +169,7 @@ class DatabaseConnection():
         if is_leggacy:
             new_dic["already_done"] = already_done_ids
         
-        self.running_coops.update_one({"guild_id": guild_id}, {"$set":
-            {
-                f"data.{contract_id}": new_dic
-            }
-        })
-
-        if self.participation_archive.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}": {
-                    "$exists": 1
-                }
-            }
-        ) == None:
-            self.participation_archive.update_one({"guild_id": guild_id}, {"$set":
-                {
-                    f"data.{contract_id}": {} 
-                }
-            })
+        self.running_coops.insert_one(new_dic)
         
         participation = {}
         for id in remaining_ids:
@@ -209,108 +178,72 @@ class DatabaseConnection():
             participation[str(id)] = ParticipationEnum.LEGGACY.value
         for id in afk_ids:
             participation[str(id)] = ParticipationEnum.AFK.value
-        self.participation_archive.update_one({"guild_id": guild_id}, {"$set":
-            {
-                f"data.{contract_id}.{date}": {
-                    "is_leggacy": is_leggacy,
-                    "participation": participation
-                } 
-            }
-        })
+
+        if self.participation_archive.find_one({"guild_id": guild_id, "contract_id": contract_id}) == None:
+            self.participation_archive.insert_one({
+                "guild_id": guild_id,
+                "contract_id": contract_id,
+                "data": {
+                    date: {
+                        "is_leggacy": is_leggacy,
+                        "participation": participation
+                    }
+                }
+            })
+        else:
+            self.participation_archive.update_one({"guild_id": guild_id, "contract_id": contract_id}, {"$set":
+                {
+                    f"data.{date}": {
+                        "is_leggacy": is_leggacy,
+                        "participation": participation
+                    } 
+                }
+            })
 
     def remove_running_contract(self, guild_id: int, contract_id: str):
-        self.running_coops.update_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}": {
-                    "$exists": 1
-                }
-            },
-            { "$unset": {f"data.{contract_id}": ""}}
-        )
+        self.running_coops.delete_one({"guild_id": guild_id, "contract_id": contract_id})
 
     def set_contract_message_id(self, guild_id: int, contract_id: str, message_id: int):
-        if self.running_coops.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}": {
-                    "$exists": 1
-                }
-            }
-        ) != None:
-            self.running_coops.update_one({"guild_id": guild_id}, {"$set":
-                {
-                    f"data.{contract_id}.message_id": message_id
-                }
-            })
+        self.running_coops.find_one_and_update(
+            {"guild_id": guild_id, "contract_id": contract_id},
+            {"$set": {"message_id": message_id}}
+        )
 
     def add_member_remaining(self, guild_id: int, contract_id: str, member_id: Union[int, str]):
-        if (doc := self.running_coops.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}": {
-                    "$exists": 1
-                }
-            }
-        )) != None:
-            remaining = doc["data"][contract_id]["remaining"]
-            remaining.append(member_id)
-            self.running_coops.update_one({"guild_id": guild_id}, {"$set":
-                {
-                    f"data.{contract_id}.remaining": remaining
-                }
-            })
+        self.running_coops.find_one_and_update(
+            {"guild_id": guild_id, "contract_id": contract_id},
+            {"$push": {"remaining": member_id}}
+        )
     
     def add_member_already_done(self, guild_id: int, contract_id: str, member_id: Union[int, str]):
-        if (doc := self.running_coops.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}": {
-                    "$exists": 1
-                }
-            }
-        )) != None:
-            done = doc["data"][contract_id]["already_done"]
-            done.append(member_id)
-            self.running_coops.update_one({"guild_id": guild_id}, {"$set":
-                {
-                    f"data.{contract_id}.already_done": done
-                }
-            })
+        self.running_coops.find_one_and_update(
+            {"guild_id": guild_id, "contract_id": contract_id},
+            {"$push": {"already_done": member_id}}
+        )
     
     def remove_member_remaining(self, guild_id: int, contract_id: str, member_id: Union[int, str]):
-        if (doc := self.running_coops.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}": {
-                    "$exists": 1
-                }
-            }
-        )) != None:
-            remaining = doc["data"][contract_id]["remaining"]
-            remaining.remove(member_id)
-            self.running_coops.update_one({"guild_id": guild_id}, {"$set":
-                {
-                    f"data.{contract_id}.remaining": remaining
-                }
-            })
+        self.running_coops.find_one_and_update(
+            {"guild_id": guild_id, "contract_id": contract_id},
+            {"$pull": {"remaining": member_id}}
+        )
 
     def remove_member_already_done(self, guild_id: int, contract_id: str, member_id: Union[int, str]):
-        if (doc := self.running_coops.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}": {
-                    "$exists": 1
-                }
+        self.running_coops.find_one_and_update(
+            {"guild_id": guild_id, "contract_id": contract_id},
+            {"$pull": {"already_done": member_id}}
+        )
+
+#endregion
+
+#region Coop getters
+
+    def get_nb_coops_created_by(self, guild_id: int, member_id: int) -> int:
+        return self.running_coops.count_documents({
+            "guild_id": guild_id,
+            "coops": {
+                "$elemMatch": {"creator": member_id, "completed_or_failed": CoopStatusEnum.RUNNING.value}
             }
-        )) != None:
-            done = doc["data"][contract_id]["already_done"]
-            done.remove(member_id)
-            self.running_coops.update_one({"guild_id": guild_id}, {"$set":
-                {
-                    f"data.{contract_id}.already_done": done
-                }
-            })
+        })
 
 #endregion
 
@@ -335,158 +268,72 @@ class DatabaseConnection():
             "completed_or_failed": CoopStatusEnum.RUNNING.value,
             "members": [creator_id]
         }
-
-        if (doc := self.running_coops.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}": {
-                    "$exists": 1
-                }
-            }
-        )):
-            coop_list = doc["data"][contract_id]["coops"].copy()
-            coop_list.append(new_dic)
-            self.running_coops.update_one({"guild_id": guild_id}, {"$set":
-                {
-                    f"data.{contract_id}.coops": coop_list
-                }
-            })
+        
+        self.running_coops.find_one_and_update(
+            {"guild_id": guild_id, "contract_id": contract_id},
+            {"$push": {"coops": new_dic}}
+        )
     
     def set_coop_message_id(self, guild_id: int, contract_id: str, coop_nb: int, message_id: int):
-        if self.running_coops.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}.coops.{coop_nb-1}": {
-                    "$exists": 1
-                }
-            }
-        ) != None:
-            self.running_coops.update_one({"guild_id": guild_id}, {"$set":
-                {
-                    f"data.{contract_id}.coops.{coop_nb-1}.message_id": message_id
-                }
-            })
+        self.running_coops.find_one_and_update(
+            {"guild_id": guild_id, "contract_id": contract_id, f"coops.{coop_nb-1}": {"$exists": 1}},
+            {"$set": {f"coops.{coop_nb-1}.message_id": message_id}}
+        )
 
     def set_coop_lock_status(self, guild_id: int, contract_id: str, coop_nb: int, locked: bool):
-        if self.running_coops.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}.coops.{coop_nb-1}": {
-                    "$exists": 1
-                }
-            }
-        ) != None:
-            self.running_coops.update_one({"guild_id": guild_id}, {"$set":
-                {
-                    f"data.{contract_id}.coops.{coop_nb-1}.locked": locked
-                }
-            })
+        self.running_coops.find_one_and_update(
+            {"guild_id": guild_id, "contract_id": contract_id, f"coops.{coop_nb-1}": {"$exists": 1}},
+            {"$set": {f"coops.{coop_nb-1}.locked": locked}}
+        )
 
     def set_coop_running_status(self, guild_id: int, contract_id: str, coop_nb: int, status: CoopStatusEnum):
-        if self.running_coops.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}.coops.{coop_nb-1}": {
-                    "$exists": 1
-                }
-            }
-        ) != None:
-            self.running_coops.update_one({"guild_id": guild_id}, {"$set":
-                {
-                    f"data.{contract_id}.coops.{coop_nb-1}.completed_or_failed": status.value
-                }
-            })
+        self.running_coops.find_one_and_update(
+            {"guild_id": guild_id, "contract_id": contract_id, f"coops.{coop_nb-1}": {"$exists": 1}},
+            {"$set": {f"coops.{coop_nb-1}.completed_or_failed": status.value}}
+        )
 
     def add_member_coop(self, guild_id: int, contract_id: str, coop_nb: int, member_id: Union[int, str]):
-        if (doc := self.running_coops.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}.coops.{coop_nb-1}": {
-                    "$exists": 1
-                }
-            }
-        )) != None:
-            members = doc["data"][contract_id]["coops"][coop_nb-1]["members"]
-            members.append(member_id)
-            self.running_coops.update_one({"guild_id": guild_id}, {"$set":
-                {
-                    f"data.{contract_id}.coops.{coop_nb-1}.members": members
-                }
-            })
+        self.running_coops.find_one_and_update(
+            {"guild_id": guild_id, "contract_id": contract_id, f"coops.{coop_nb-1}": {"$exists": 1}},
+            {"$push": {f"coops.{coop_nb-1}.members": member_id}}
+        )
 
     def remove_member_coop(self, guild_id: int, contract_id: str, coop_nb: int, member_id: Union[int, str]):
-        if (doc := self.running_coops.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}.coops.{coop_nb-1}": {
-                    "$exists": 1
-                }
-            }
-        )) != None:
-            members = doc["data"][contract_id]["coops"][coop_nb-1]["members"]
-            members.remove(member_id)
-            self.running_coops.update_one({"guild_id": guild_id}, {"$set":
-                {
-                    f"data.{contract_id}.coops.{coop_nb-1}.members": members
-                }
-            })
+        self.running_coops.find_one_and_update(
+            {"guild_id": guild_id, "contract_id": contract_id, f"coops.{coop_nb-1}": {"$exists": 1}},
+            {"$pull": {f"coops.{coop_nb-1}.members": member_id}}
+        )
 
     def unset_coop_creator(self, guild_id: int, contract_id: str, coop_nb: int):
-        if self.running_coops.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}.coops.{coop_nb-1}": {
-                    "$exists": 1
-                }
-            }
-        ) != None:
-            self.running_coops.update_one({"guild_id": guild_id}, {"$set":
-                {
-                    f"data.{contract_id}.coops.{coop_nb-1}.creator": ""
-                }
-            })
+        self.running_coops.find_one_and_update(
+            {"guild_id": guild_id, "contract_id": contract_id, f"coops.{coop_nb-1}": {"$exists": 1}},
+            {"$set": {f"coops.{coop_nb-1}.creator": ""}}
+        )
 
 #endregion
 
 #region Archive
 
     def get_contract_archive(self, guild_id: int, contract_id: str) -> Union[Dict, None]:
-        if (doc := self.participation_archive.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}": {
-                    "$exists": 1
-                }
-            }
-        )):
-            return doc["data"][contract_id].copy()
-        else:
-            return None
+        return self.participation_archive.find_one({"guild_id": guild_id, "contract_id": contract_id})
 
     def get_archive_by_date(self, guild_id: int) -> Union[Dict, None]:
-        if (
-            (running := self.running_coops.find_one({"guild_id": guild_id})) != None
-            and (archive := self.participation_archive.find_one({"guild_id": guild_id})) != None
-        ): 
-            date_dic = {}
-            for id, occurrences in archive["data"].items():
-                for date, occurrence in occurrences.items():
-                    # If the contract occurrence is still running, ignore
-                    if id in running["data"].keys() and date == running["data"][id]["date"]:
-                        continue
-                    # Else
-                    if date not in date_dic.keys():
-                        date_dic[date] = []
-                    value = occurrence.copy()
-                    value["contract_id"] = id
-                    date_dic[date].append(value)
-            # Sorts by date
-            date_dic = dict(sorted(date_dic.items(), reverse=True))
-            return date_dic
-        else:
-            return None
+        date_dic = {}
+        for doc in self.participation_archive.find({"guild_id": guild_id}):
+            for date, occurrence in doc["data"].items():
+                # If the contract occurrence is still running, ignore
+                if self.running_coops.find_one({"guild_id": guild_id, "contract_id": doc["contract_id"], "date": date}) != None:
+                    continue
+                # Else
+                if date not in date_dic.keys():
+                    date_dic[date] = []
+                value = occurrence.copy()
+                value["contract_id"] = doc["contract_id"]
+                date_dic[date].append(value)
+        # Sorts by date
+        date_dic = dict(sorted(date_dic.items(), reverse=True))
+        return date_dic
 
-    # OK
     def set_member_participation(
         self,
         guild_id: int,
@@ -495,18 +342,9 @@ class DatabaseConnection():
         member_id: Union[int, str],
         participation: ParticipationEnum
     ):
-        if self.participation_archive.find_one(
-            {
-                "guild_id": guild_id,
-                f"data.{contract_id}.{contract_date}": {
-                    "$exists": 1
-                }
-            }
-        ):
-            self.participation_archive.update_one({"guild_id": guild_id}, {"$set":
-                {
-                    f"data.{contract_id}.{contract_date}.participation.{member_id}": participation.value
-                }
-            })
+        self.participation_archive.find_one_and_update(
+            {"guild_id": guild_id, "contract_id": contract_id},
+            {"$set": {f"data.{contract_date}.participation.{member_id}": participation.value}}
+        )
 
 #endregion

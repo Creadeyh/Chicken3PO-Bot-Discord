@@ -7,67 +7,63 @@ guild_config collection, document structure:
 	"KEEP_COOP_CHANNELS": false
 }
 
-running_coops collection, document structure:
+running_coops collection, document structure (1 doc per contract):
 
 {
 	"guild_id": [guild_id],
-	"data": {
-		[contract-id] : {
-			"size" : [contract-size],
-			"date" : [date]
-			"is_leggacy" : True/False,
+	"contract_id": [contract-id],
+	"size" : [contract-size],
+	"date" : [date]
+	"is_leggacy" : True/False,
+	"channel_id": [channel-id],
+	"message_id": [message-id],
+	"coops" : [
+		{
+			"code" : [coop-code],
+			"creator" : [discord-id],
 			"channel_id": [channel-id],
 			"message_id": [message-id],
-			"coops" : [
-				{
-					"code" : [coop-code],
-					"creator" : [discord-id],
-					"channel_id": [channel-id],
-					"message_id": [message-id],
-					"locked": true/false,
-					"completed_or_failed": false/"completed"/"failed", # False if still running
-					"members" : [
-						[discord-id],
-						...
-						# Alt accounts are alt+discord-id
-					]
-				},
-				...
-			],
-			"remaining" : [
+			"locked": true/false,
+			"completed_or_failed": false/"completed"/"failed", # False if still running
+			"members" : [
 				[discord-id],
 				...
-			],
-			"already_done": [ # If leggacy
-				[discord-id],
-				...
+				# Alt accounts are alt+discord-id
 			]
-		}
-	}
+		},
+		...
+	],
+	"remaining" : [
+		[discord-id],
+		...
+	],
+	"already_done": [ # If leggacy
+		[discord-id],
+		...
+	]
 }
 
-participation_archive collection, document structure:
+participation_archive collection, document structure (1 doc per contract):
 
 {
 	"guild_id": [guild_id],
+	"contract_id": [contract-id],
 	"data": {
-		[contract-id] : {
-			[date] : {
-				"is_leggacy" : False,
-				"participation" : {
-					[discord-id1] : "yes",
-					[discord-id2] : "no",
-					...
-				}
-			},
-			[date] : {
-				"is_leggacy" : True,
-				"participation" : {
-					[discord-id1] : "leggacy",
-					[discord-id2] : "yes",
-					[discord-id3] : "no",
-					...
-				}
+		[date] : {
+			"is_leggacy" : False,
+			"participation" : {
+				[discord-id1] : "yes",
+				[discord-id2] : "no",
+				...
+			}
+		},
+		[date] : {
+			"is_leggacy" : True,
+			"participation" : {
+				[discord-id1] : "leggacy",
+				[discord-id2] : "yes",
+				[discord-id3] : "no",
+				...
 			}
 		}
 	}
