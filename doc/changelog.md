@@ -1,3 +1,9 @@
+# v1.3.7
+
+**Backend changes:**
+
+- Config preparation for version 2
+
 # v1.3.6
 
 **Bugfixes:**
