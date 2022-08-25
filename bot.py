@@ -160,6 +160,25 @@ async def modify_data_file(ctx, filename, key_path, value = None):
         await ctx.send(f"Administrative error (#4) :confounded:\n```{type(inst)}\n{inst}```")
         return
 
+@bot.command(name="update-data-version")
+@commands.is_owner()
+async def update_data_version(ctx):
+    with open("config.json", "r") as f:
+        config = json.load(f)
+
+    # Pre 1.3.7
+    if "BOT_VERSION" not in config.keys():
+
+        # Added database connection
+        config["DB_HOSTNAME"] = "localhost"
+        config["DB_PORT"] = 27017
+        config["DB_NAME"] = "test_database"
+
+        # Added version for update checks
+        config["BOT_VERSION"] = "1.3.7"
+        
+        with open("config.json", "w") as f:
+            json.dump(config, f, indent=4)
 
 ##########################
 ##### Command events #####
