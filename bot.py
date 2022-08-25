@@ -167,60 +167,6 @@ async def remove_from_server(ctx, id):
     else:
         await ctx.send(f"Left {guild.name} :wink:")
 
-#TODO Remove if access to Teddi's DB
-# @pycord_bot.command(name="getdatafile")
-# @pycord_commands.is_owner()
-# async def get_data_file(ctx, filename):
-
-#     dm_channel = ctx.author.dm_channel
-#     if dm_channel == None:
-#         await ctx.author.create_dm()
-#         dm_channel = ctx.author.dm_channel
-    
-#     try:
-#         with open(f"data/{filename}.json", "rb") as f:
-#             await dm_channel.send(file=pycord.File(f))
-#     except Exception as inst:
-#         await ctx.send(f"Administrative error (#3) :confounded:\n```{type(inst)}\n{inst}```")
-#         return
-
-#TODO Remove if access to Teddi's DB
-# @pycord_bot.command(name="modifydatafile")
-# @pycord_commands.is_owner()
-# async def modify_data_file(ctx, filename, key_path, value = None):
-
-#     try:
-#         file = utils.read_json(filename)
-
-#         data = file
-#         keys = key_path.split("/")
-#         i = 1
-#         while i < len(keys):
-#             if keys[i-1].isnumeric():
-#                 data = data[int(keys[i-1])]
-#             else:
-#                 data = data[keys[i-1]]
-#             i += 1
-        
-#         if value == None:
-#             if type(data) == list:
-#                 data.pop(keys[-1])
-#             else:
-#                 raise Exception
-#         elif value.isnumeric():
-#             data[keys[-1]] = int(value)
-#         elif value.lower() == "true":
-#             data[keys[-1]] = True
-#         elif value.lower() == "false":
-#             data[keys[-1]] = False
-#         else:
-#             data[keys[-1]] = value
-        
-#         utils.save_json(filename, file)
-#     except Exception as inst:
-#         await ctx.send(f"Administrative error (#4) :confounded:\n```{type(inst)}\n{inst}```")
-#         return
-
 @pycord_bot.command(name="update-data-version")
 @pycord_commands.is_owner()
 async def update_data_version(ctx: pycord_commands.Context):
