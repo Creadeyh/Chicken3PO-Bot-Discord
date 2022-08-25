@@ -32,7 +32,6 @@ class DatabaseConnection():
 
 #region Alt index
 
-    # OK
     def add_alt_account(self, guild_id: int, member_id: int, name_main: str, name_alt: str):
         self.alt_index.update_one({"guild_id": guild_id}, {"$set":
             {
@@ -44,7 +43,6 @@ class DatabaseConnection():
             }
         })
 
-    # OK
     def remove_alt_account(self, guild_id: int, member_id: int):
         self.alt_index.update_one(
             {

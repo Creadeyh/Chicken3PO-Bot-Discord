@@ -39,7 +39,8 @@ class Coop(interactions.Extension):
             )
         ])
     async def add_coop(self, ctx: CommandContext, coop_code: str, locked: bool=False):
-        
+        await ctx.defer(ephemeral=True)
+
         interac_guild = await ctx.get_guild()
 
         if not (contract_id := checks.check_contract_channel(self.db_connection, int(interac_guild.id), int(ctx.channel_id))):
@@ -328,7 +329,8 @@ class Coop(interactions.Extension):
         scope=GUILD_IDS
     )
     async def coop_completed_slash(self, ctx: ComponentContext):
-        
+        await ctx.defer(ephemeral=True)
+
         interac_guild = await ctx.get_guild()
 
         if not (coop_infos_tuple := checks.check_coop_channel(self.db_connection, int(interac_guild.id), int(ctx.channel_id))):
@@ -366,7 +368,8 @@ class Coop(interactions.Extension):
         scope=GUILD_IDS
     )
     async def coop_failed_slash(self, ctx: CommandContext):
-        
+        await ctx.defer(ephemeral=True)
+
         interac_guild = await ctx.get_guild()
 
         if not (coop_infos_tuple := checks.check_coop_channel(self.db_connection, int(interac_guild.id), int(ctx.channel_id))):
@@ -408,7 +411,8 @@ class Coop(interactions.Extension):
         type=interactions.ApplicationCommandType.MESSAGE
     )
     async def coop_completed_menu(self, ctx: ComponentContext):
-        
+        await ctx.defer(ephemeral=True)
+
         interac_guild = await ctx.get_guild()
 
         if not (coop_infos_tuple := checks.check_context_menu_coop_message(self.db_connection, int(interac_guild.id), int(ctx.target.id))):
@@ -446,6 +450,7 @@ class Coop(interactions.Extension):
         type=interactions.ApplicationCommandType.MESSAGE
     )
     async def coop_failed_menu(self, ctx: ComponentContext):
+        await ctx.defer(ephemeral=True)
         
         interac_guild = await ctx.get_guild()
 
@@ -487,6 +492,8 @@ class Coop(interactions.Extension):
         
         # Join coop button
         if ctx.data.custom_id.startswith("joincoop_"):
+            await ctx.defer(ephemeral=True)
+
             contract_id = ctx.data.custom_id.split('_')[1]
             coop_nb = int(ctx.data.custom_id.split('_')[2])
 
@@ -499,7 +506,7 @@ class Coop(interactions.Extension):
 
             # Check for alt
             alt_role = pycord.utils.get(ctx_guild.roles, name="Alt")
-            if alt_role in ctx.author.roles:
+            if alt_role in ctx_author.roles:
                 action_row = interactions.ActionRow(components=[
                     interactions.Button(
                         style=interactions.ButtonStyle.SECONDARY,

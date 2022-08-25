@@ -46,7 +46,8 @@ class Contract(interactions.Extension):
             )
         ])
     async def add_contract(self, ctx: CommandContext, contract_id: str, size: int, is_leggacy: bool=False):
-    
+        await ctx.defer(ephemeral=True)
+
         interac_guild = await ctx.get_guild()
         ctx_guild: pycord.Guild = self.pycord_bot.get_guild(int(interac_guild.id))
         ctx_channel = ctx_guild.get_channel(int(ctx.channel_id))
@@ -143,7 +144,8 @@ class Contract(interactions.Extension):
         scope=GUILD_IDS
     )
     async def remove_contract_slash(self, ctx: CommandContext):
-        
+        await ctx.defer(ephemeral=True)
+
         interac_guild = await ctx.get_guild()
 
         if not (contract_id := checks.check_contract_channel(self.db_connection, int(interac_guild.id), int(ctx.channel_id))):
@@ -208,6 +210,7 @@ class Contract(interactions.Extension):
         type=interactions.ApplicationCommandType.MESSAGE
     )
     async def remove_contract_menu(self, ctx: ComponentContext):
+        await ctx.defer(ephemeral=True)
         
         interac_guild = await ctx.get_guild()
 
@@ -360,7 +363,6 @@ class Contract(interactions.Extension):
 
     #region Misc methods
 
-    # OK
     async def execute_remove_contract(self, guild: pycord.Guild, contract_id: str, contract_channel_id: int):
 
         # Deletes contract channel, category, and all coop channels and roles leftover

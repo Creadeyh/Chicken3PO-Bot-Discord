@@ -8,30 +8,10 @@ from typing import *
 
 from extensions.enums import CoopStatusEnum
 
-#region JSON utils
-
-# JSON_PATH = "data/"
-
 def read_config(key: str) -> Union[str, int]:
     with open("config.json", "r") as f:
         config = json.load(f)
     return config[key]
-
-# def read_json(name):
-#     try:
-#         with open(f"{JSON_PATH}{name}.json", "r") as f:
-#             dic = json.load(f)
-#     except FileNotFoundError:
-#         dic = {}
-#         with open(f"{JSON_PATH}{name}.json", "w") as f:
-#             json.dump(dic, f, indent=4)
-#     return dic
-
-# def save_json(name, dic):
-#     with open(f"{JSON_PATH}{name}.json", "w") as f:
-#         json.dump(dic, f, indent=4)
-
-#endregion
 
 def load_db_connection():
     db_hostname = read_config("DB_HOSTNAME")

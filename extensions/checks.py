@@ -37,11 +37,7 @@ def check_coop_channel(db_connection: db.DatabaseConnection, guild_id: int, chan
     Returns (contract_id, coop_nb) if channel is a coop channel,
     else returns False
     """
-    # running_coops = db_connection.get_running_dic(guild_id)
-    # for contract_id, contract in running_coops.items():
-    #     for i in range(len(contract["coops"])):
-    #         if contract["coops"][i]["channel_id"] == channel_id:
-    #             return contract_id, i+1
+
     if (res := db_connection.running_coops.find_one(
         {"guild_id": guild_id, "coops.channel_id": channel_id},
         {"contract_id": 1, "coop_nb": {"$indexOfArray": ["$coops.channel_id", channel_id]}}
@@ -55,11 +51,7 @@ def check_context_menu_coop_message(db_connection: db.DatabaseConnection, guild_
     Returns (contract_id, coop_nb) if target message is a coop message,
     else returns False
     """
-    # running_coops = db_connection.get_running_dic(guild_id)
-    # for contract_id, contract in running_coops.items():
-    #     for i in range(len(contract["coops"])):
-    #         if contract["coops"][i]["message_id"] == target_message_id:
-    #             return contract_id, i+1
+
     if (res := db_connection.running_coops.find_one(
         {"guild_id": guild_id, "coops.message_id": target_message_id},
         {"contract_id": 1, "coop_nb": {"$indexOfArray": ["$coops.message_id", target_message_id]}}
