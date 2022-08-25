@@ -67,7 +67,7 @@ class DatabaseConnection():
                 }
             }
         )):
-            return doc["data"][member_id]["main"]
+            return doc["data"][str(member_id)]["main"]
         else:
             return None
 
@@ -80,7 +80,7 @@ class DatabaseConnection():
                 }
             }
         )):
-            return doc["data"][member_id]["alt"]
+            return doc["data"][str(member_id)]["alt"]
         else:
             return None
 
@@ -101,7 +101,7 @@ class DatabaseConnection():
             return False
     
     def has_member_participated_in_previous_contract(self, guild_id: int, contract_id: str, member_id: int) -> Union[bool, None]:
-        if (doc := self.participation_archive.find_one({"guild_id": guild_id, "contract_id": contract_id})) != None:
+        if (doc := self.participation_archive.find_one({"guild_id": guild_id, "contract_id": contract_id})) == None:
             return None
         for occurence in doc["data"].values():
             if (
@@ -122,11 +122,6 @@ class DatabaseConnection():
             return None
     
     def get_all_contract_channel_ids(self, guild_id: int) -> Union[List[int], None]:
-        # if (doc := self.running_coops.find_one({"guild_id": guild_id})) != None:
-        #     return [contract["channel_id"] for contract in doc["data"].values()]
-        # else:
-        #     return None
-        #TODO check cursor behavior
         if (cursor := self.running_coops.find({"guild_id": guild_id})) != None:
             return [contract["channel_id"] for contract in cursor]
         else:

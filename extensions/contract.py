@@ -165,7 +165,7 @@ class Contract(interactions.Extension):
                 await ctx.send(":warning: Some coops are still running", ephemeral=True)
                 return
         
-        await self.execute_remove_contract(ctx_guild, contract_id)
+        await self.execute_remove_contract(ctx_guild, contract_id, contract_dic["channel_id"])
 
         await ctx.send("Removed the contract :white_check_mark:", ephemeral=True)
 
@@ -230,7 +230,7 @@ class Contract(interactions.Extension):
                 await ctx.send(":warning: Some coops are still running", ephemeral=True)
                 return
         
-        await self.execute_remove_contract(ctx_guild, contract_id)
+        await self.execute_remove_contract(ctx_guild, contract_id, contract_dic["channel_id"])
 
     #endregion
 
@@ -238,7 +238,6 @@ class Contract(interactions.Extension):
 
     @interactions.extension_listener(name="on_message_create")
     async def on_message_create(self, message: interactions.Message):
-        
         if not message.author.bot and int(message.channel_id) in self.db_connection.get_all_contract_channel_ids(int(message.guild_id)):
             await message.delete()
 
@@ -293,7 +292,7 @@ class Contract(interactions.Extension):
                 # Removes the player from already done
                 
                 archive = self.db_connection.get_contract_archive(int(interac_guild.id), contract_id)
-                for date, occurrence in archive.items():
+                for date, occurrence in archive["data"].items():
                     if (
                         date != contract_dic["date"] and
                         str(author_id) in occurrence["participation"].keys() and
@@ -303,8 +302,8 @@ class Contract(interactions.Extension):
                         return
 
                 # Updates DB
-                self.db_connection.add_member_remaining(author_id)
-                self.db_connection.remove_member_already_done(author_id)
+                self.db_connection.add_member_remaining(int(interac_guild.id), contract_id, author_id)
+                self.db_connection.remove_member_already_done(int(interac_guild.id), contract_id, author_id)
                 self.db_connection.set_member_participation(int(interac_guild.id), contract_id, contract_dic["date"], author_id, ParticipationEnum.NO)
 
                 await utils.update_contract_message(self.bot, self.pycord_bot, self.db_connection, ctx_guild, contract_id)
@@ -361,12 +360,11 @@ class Contract(interactions.Extension):
 
     #region Misc methods
 
-    async def execute_remove_contract(self, guild: pycord.Guild, contract_id: str):
-
-        contract_dic = self.db_connection.get_running_contract(guild.id, contract_id)
+    # OK
+    async def execute_remove_contract(self, guild: pycord.Guild, contract_id: str, contract_channel_id: int):
 
         # Deletes contract channel, category, and all coop channels and roles leftover
-        contract_channel = await guild.fetch_channel(contract_dic["channel_id"])
+        contract_channel = await guild.fetch_channel(contract_channel_id)
         contract_category = await guild.fetch_channel(contract_channel.category_id)
 
         for channel in contract_category.channels:

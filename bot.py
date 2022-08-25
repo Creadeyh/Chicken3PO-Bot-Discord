@@ -284,7 +284,7 @@ async def update_data_version(ctx: pycord_commands.Context):
                 "guild_id": db_connection.get_all_guild_ids()[0],
                 "contract_id": contract_id
             }
-            insert.update(data.copy())
+            insert["data"] = data.copy()
             db_connection.participation_archive.insert_one(insert)
         os.remove("data/participation_archive.json")
 

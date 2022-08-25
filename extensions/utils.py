@@ -57,13 +57,6 @@ async def get_member_mention(member_id: int, guild: pycord.Guild, bot: pycord.Cl
         return guild.get_member(member_id).mention
 
 def is_member_active_in_any_running_coops(member_id: int, db_connection: db.DatabaseConnection, guild_id: int) -> bool:
-    # running_coops = db_connection.get_running_dic(guild_id)
-    # for contract in running_coops.values():
-    #     for coop in contract["coops"]:
-    #         if member_id in coop["members"]:
-    #             return True
-    # return False
-
     if db_connection.running_coops.find_one({"guild_id": guild_id, "coops.members": member_id}) != None:
         return True
     else:
