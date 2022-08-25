@@ -51,6 +51,10 @@ async def reload_extensions():
 @bot.event
 async def on_guild_create(guild: interactions.Guild):
 
+    # TODO remove after 2.0
+    if utils.read_config("BOT_VERSION") == "1.3.7":
+        return
+    
     if int(guild.id) not in db_connection.get_all_guild_ids():
         # New guild registration
 
@@ -65,8 +69,6 @@ async def on_guild_create(guild: interactions.Guild):
 
         # Data documents
         db_connection.alt_index.insert_one({"guild_id": int(guild.id), "data": {}})
-        db_connection.running_coops.insert_one({"guild_id": int(guild.id), "data": {}})
-        db_connection.participation_archive.insert_one({"guild_id": int(guild.id), "data": {}})
         
         data = await bot._http.get_channel(guild.system_channel_id)
         main_channel = interactions.Channel(**data, _client=bot._http)
@@ -120,8 +122,8 @@ async def on_guild_member_remove(member: interactions.GuildMembers):
     if int(member.user.id) == int(bot.me.id):
         db_connection.guild_config.delete_one({"guild_id": int(member.guild_id)})
         db_connection.alt_index.delete_one({"guild_id": int(member.guild_id)})
-        db_connection.running_coops.delete_one({"guild_id": int(member.guild_id)})
-        db_connection.participation_archive.delete_one({"guild_id": int(member.guild_id)})
+        db_connection.running_coops.delete_many({"guild_id": int(member.guild_id)})
+        db_connection.participation_archive.delete_many({"guild_id": int(member.guild_id)})
         await reload_extensions()
 
 #endregion
@@ -267,17 +269,23 @@ async def update_data_version(ctx: pycord_commands.Context):
         os.remove("data/alt_index.json")
         with open("data/running_coops.json", "r") as f:
             running_coops = json.load(f)
-        db_connection.running_coops.insert_one({
-            "guild_id": db_connection.get_all_guild_ids()[0],
-            "data": running_coops
-        })
+        for contract_id, data in running_coops.items():
+            insert = {
+                "guild_id": db_connection.get_all_guild_ids()[0],
+                "contract_id": contract_id
+            }
+            insert.update(data.copy())
+            db_connection.running_coops.insert_one(insert)
         os.remove("data/running_coops.json")
         with open("data/participation_archive.json", "r") as f:
             participation_archive = json.load(f)
-        db_connection.participation_archive.insert_one({
-            "guild_id": db_connection.get_all_guild_ids()[0],
-            "data": participation_archive
-        })
+        for contract_id, data in participation_archive.items():
+            insert = {
+                "guild_id": db_connection.get_all_guild_ids()[0],
+                "contract_id": contract_id
+            }
+            insert.update(data.copy())
+            db_connection.participation_archive.insert_one(insert)
         os.remove("data/participation_archive.json")
 
         await ctx.send("Successfully updated data to 2.0.0 :white_check_mark:")
