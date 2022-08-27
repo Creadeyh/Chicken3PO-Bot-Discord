@@ -1,3 +1,9 @@
+# v1.3.7.1
+
+**Backend changes:**
+
+- Config fix for version 2
+
 # v1.3.7
 
 **Backend changes:**
