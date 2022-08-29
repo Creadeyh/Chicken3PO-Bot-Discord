@@ -186,10 +186,19 @@ async def update_data_version(ctx: pycord_commands.Context):
         
         with open("config.json", "w") as f:
             json.dump(config, f, indent=4)
-        await ctx.send("Successfully updated data to 1.3.7 :white_check_mark:")
-    
+        await ctx.send("Successfully updated data to 1.3.7 :white_check_mark:", hidden=True)
     elif config["BOT_VERSION"] == "1.3.7":
         config["BOT_VERSION"] = "2.0.0"
+
+    elif config["BOT_VERSION"] == "1.3.7":
+        config.pop("DB_HOSTNAME")
+        config.pop("DB_PORT")
+        config["DB_STRING"] = "mongodb://localhost:27017"
+        config["BOT_VERSION"] = "1.3.7.1"
+
+        with open("config.json", "w") as f:
+            json.dump(config, f, indent=4)
+        await ctx.send("Successfully updated data to 1.3.7.1 :white_check_mark:", hidden=True)
 
         # Removed embed support
         for guild_id in config["guilds"].keys():

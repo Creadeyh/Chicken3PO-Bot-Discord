@@ -1,4 +1,9 @@
 # Changelog
+# v1.3.7.1
+
+**Backend changes:**
+
+- Config fix for version 2
 
 ## v2.0.0
 
