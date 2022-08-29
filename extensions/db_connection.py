@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
 
 from extensions.enums import ParticipationEnum, CoopStatusEnum
 
@@ -6,8 +7,14 @@ from typing import *
 
 class DatabaseConnection():
 
-    def __init__(self, hostname, port, database_name):
-        self.client = MongoClient(hostname, port)
+    def __init__(self, connection_string, database_name):
+        self.client = MongoClient(connection_string)
+        try:
+            self.client.admin.command('ping')
+        except ConnectionFailure:
+            print("Server not available")
+        else:
+            print("Connected to MongoDB")
         self.db = self.client[database_name]
         self.guild_config = self.db.guild_config
         self.alt_index = self.db.alt_index

@@ -14,10 +14,9 @@ def read_config(key: str) -> Union[str, int]:
     return config[key]
 
 def load_db_connection():
-    db_hostname = read_config("DB_HOSTNAME")
-    db_port = read_config("DB_PORT")
+    db_string = read_config("DB_STRING")
     db_name = read_config("DB_NAME")
-    return db.DatabaseConnection(db_hostname, db_port, db_name)
+    return db.DatabaseConnection(db_string, db_name)
 
 #region Member utils
 

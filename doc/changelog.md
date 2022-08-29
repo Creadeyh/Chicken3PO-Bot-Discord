@@ -1,9 +1,4 @@
 # Changelog
-# v1.3.7.1
-
-**Backend changes:**
-
-- Config fix for version 2
 
 ## v2.0.0
 
@@ -26,6 +21,12 @@
 **Bugfixes:**
 
 - Fixed the state of the coop join button which didn't stay as completed after kicking a member
+
+## v1.3.7.1
+
+**Backend changes:**
+
+- Config fix for version 2
 
 ## v1.3.7
 

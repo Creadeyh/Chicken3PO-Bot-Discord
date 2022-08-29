@@ -52,7 +52,7 @@ async def reload_extensions():
 async def on_guild_create(guild: interactions.Guild):
 
     # TODO remove after 2.0
-    if utils.read_config("BOT_VERSION") == "1.3.7":
+    if utils.read_config("BOT_VERSION") in ["1.3.7", "1.3.7.1"]:
         return
     
     if int(guild.id) not in db_connection.get_all_guild_ids():
@@ -186,9 +186,7 @@ async def update_data_version(ctx: pycord_commands.Context):
         
         with open("config.json", "w") as f:
             json.dump(config, f, indent=4)
-        await ctx.send("Successfully updated data to 1.3.7 :white_check_mark:", hidden=True)
-    elif config["BOT_VERSION"] == "1.3.7":
-        config["BOT_VERSION"] = "2.0.0"
+        await ctx.send("Successfully updated data to 1.3.7 :white_check_mark:")
 
     elif config["BOT_VERSION"] == "1.3.7":
         config.pop("DB_HOSTNAME")
@@ -198,7 +196,10 @@ async def update_data_version(ctx: pycord_commands.Context):
 
         with open("config.json", "w") as f:
             json.dump(config, f, indent=4)
-        await ctx.send("Successfully updated data to 1.3.7.1 :white_check_mark:", hidden=True)
+        await ctx.send("Successfully updated data to 1.3.7.1 :white_check_mark:")
+    
+    elif config["BOT_VERSION"] == "1.3.7.1":
+        config["BOT_VERSION"] = "2.0.0"
 
         # Removed embed support
         for guild_id in config["guilds"].keys():
