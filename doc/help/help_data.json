@@ -1,0 +1,112 @@
+[
+    {
+        "title": "Introduction",
+        "pages": [
+            {
+                "title": "What Chicken3PO does",
+                "content": "This bot allows you to easily organize your coops for EggInc contracts.\nWhen a new contract comes out, admins and Coop Organizers can create a reserved area for it, where players will register their in-game coops and others can join.\nYou will also be able to follow who has still to join and who has already done a leggacy contract.",
+                "image_url": "https://cdn.discordapp.com/attachments/955493962238558248/955494016366034995/help_intro.png"
+            }
+        ]
+    },
+    {
+        "title": "Admin commands",
+        "pages": [
+            {
+                "title": "/register-alt [member] [name-main] [name-alt]",
+                "content": "- Registers an alt EggInc account for the Discord account\n- *member* = The Discord account\n- *name-main* = The EggInc name of the main account\n- *name-alt* = The EggInc name of the alt account",
+                "image_url": ""
+            },
+            {
+                "title": "/unregister-alt [member]",
+                "content": "- Unregisters the alt EggInc account for the Discord account\n- *member* = The Discord account",
+                "image_url": ""
+            },
+            {
+                "title": "/settings [setting] [value]",
+                "content": "- Changes a setting value of the bot for the guild\n- *setting* = The setting to change\n- *value* = The value to set",
+                "image_url": ""
+            }
+        ]
+    },
+    {
+        "title": "Contract commands",
+        "pages": [
+            {
+                "title": "/contract [contract-id] [size] [is-leggacy]",
+                "content": "- Admins and coop organizers only\n- Registers a new contract and creates a channel and category for it\n- *contract-id* = The unique ID for an EggInc contract\n- *size* = Number of slots available in the contract\n- *is-leggacy* = Whether the contract is leggacy or not",
+                "image_url": ""
+            },
+            {
+                "title": "Already done button",
+                "content": "If the contract is a leggacy and you have already completed it in one of its previous appearances, you can click this button to tell the organizers you won't be participating in it\nIf you use it by accident (despite the confirmation check), you can use it a second time to get back in the remaining list and join coops",
+                "image_url": "https://media.discordapp.net/attachments/955493962238558248/956177123205333032/help_already_done.png"
+            },
+            {
+                "title": "/codes",
+                "content": "- **Use in a contract channel**\n- Admins and coop organizers only\n- Sends a list of the coop codes for the contract\n",
+                "image_url": ""
+            },
+            {
+                "title": "Remove contract with context menu",
+                "content": "- Admins and coop organizers only\nOnce all coops are completed/failed, you can delete the contract's category by right-clicking on the contract message and select `Apps` -> `Remove contract`",
+                "image_url": "https://media.discordapp.net/attachments/955493962238558248/956183843226931251/help_remove_contract.png"
+            },
+            {
+                "title": "/contract-remove",
+                "content": "- **Use in a contract channel**\n- Admins and coop organizers only\n- Slash command alternative for the `Remove contract` context menu, as they are not supported on mobile",
+                "image_url": ""
+            }
+        ]
+    },
+    {
+        "title": "Coop commands",
+        "pages": [
+            {
+                "title": "/coop [coop-code] [locked]",
+                "content": "- **Use in a contract channel**\n- Registers a new coop and displays it in the contract channel\n- *coop-code* = The code to join the coop\n- *locked* = Whether or not the coop is locked at creation. Prevents people from joining",
+                "image_url": ""
+            },
+            {
+                "title": "Join button",
+                "content": "To join an open coop, click on the join button below the list of the coop members.\nYou will be given the code to join in-game and access to your coop's reserved channel",
+                "image_url": "https://media.discordapp.net/attachments/955493962238558248/956193627862859776/help_coop_join.png"
+            },
+            {
+                "title": "/lock",
+                "content": "- **Use in a coop channel**\n- Admins, coop organizers and coop creators only\n- Locks a coop, preventing people from joining",
+                "image_url": "https://media.discordapp.net/attachments/955493962238558248/956204089623076914/help_coop_locked.png"
+            },
+            {
+                "title": "/unlock",
+                "content": "- **Use in a coop channel**\n- Admins, coop organizers and coop creators only\n- Unlocks a coop, allowing people to join again",
+                "image_url": ""
+            },
+            {
+                "title": "/kick [member]",
+                "content": "- **Use in a coop channel**\n- Admins, coop organizers and coop creators only\n- Kicks someone from a coop\n- *member* = The member to be kicked from the coop",
+                "image_url": ""
+            },
+            {
+                "title": "Coop completed with context menu",
+                "content": "Once your coop is completed, you can mark it as so by right-clicking on your coop message and select `Apps` -> `Coop completed`",
+                "image_url": "https://media.discordapp.net/attachments/955493962238558248/956190530012844042/help_coop_completed.png"
+            },
+            {
+                "title": "/coop-completed",
+                "content": "- **Use in a coop channel**\n- Admins, coop organizers and coop creators only\n- Slash command alternative for the `Coop completed` context menu, as they are not supported on mobile",
+                "image_url": ""
+            },
+            {
+                "title": "Coop failed with context menu",
+                "content": "If you happen to fail your coop, you can mark it as so by right-clicking on your coop message and select `Apps` -> `Coop failed`\nThis will return all members to the remaining list so they can join or create another coop",
+                "image_url": "https://media.discordapp.net/attachments/955493962238558248/956190565987418162/help_coop_failed.png"
+            },
+            {
+                "title": "/coop-failed",
+                "content": "- **Use in a coop channel**\n- Admins, coop organizers and coop creators only\n- Slash command alternative for the `Coop failed` context menu, as they are not supported on mobile",
+                "image_url": ""
+            }
+        ]
+    }
+]
