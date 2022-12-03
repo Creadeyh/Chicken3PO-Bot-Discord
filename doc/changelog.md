@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.0.1
+
+**Changes:**
+
+- Removed mention of already done AFK members when a leggacy contract is added, to avoid this mild annoyance to AFK members
+
 ## v2.0.0
 
 **Changes:**
