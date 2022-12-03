@@ -2,6 +2,7 @@ import discord as pycord
 import interactions
 
 import extensions.db_connection as db
+from extensions.checks import check_is_id_afk
 
 import json
 from typing import *
@@ -56,7 +57,8 @@ async def generate_contract_message_content_component(pycord_bot: pycord.Client,
     if is_leggacy:
         already_done_mentions = []
         for id in contract_dic["already_done"]:
-            already_done_mentions.append(await get_member_mention(id, guild, pycord_bot, db_connection))
+            if not check_is_id_afk(id, guild):
+                already_done_mentions.append(await get_member_mention(id, guild, pycord_bot, db_connection))
     remaining_mentions = []
     for id in contract_dic["remaining"]:
         remaining_mentions.append(await get_member_mention(id, guild, pycord_bot, db_connection))

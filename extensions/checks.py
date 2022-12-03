@@ -91,4 +91,11 @@ def check_is_afk(author: pycord.Member, guild: pycord.Guild):
     afk_role = pycord.utils.get(guild.roles, name="AFK")
     return afk_role in author.roles
 
+def check_is_id_afk(member_id: Union[int, str], guild: pycord.Guild):
+    if isinstance(member_id, str):
+        id: int = int(member_id.replace("alt", ""))
+    else:
+        id: int = member_id
+    return check_is_afk(guild.get_member(id), guild)
+
 #endregion
