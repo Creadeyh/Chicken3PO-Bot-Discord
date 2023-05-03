@@ -293,16 +293,6 @@ class Contract(interactions.Extension):
 
             if author_id in contract_dic["already_done"]:
                 # Removes the player from already done
-                
-                archive = self.db_connection.get_contract_archive(int(interac_guild.id), contract_id)
-                for date, occurrence in archive["data"].items():
-                    if (
-                        date != contract_dic["date"] and
-                        str(author_id) in occurrence["participation"].keys() and
-                        occurrence["participation"][str(author_id)] != ParticipationEnum.NO.value
-                    ):
-                        await ctx_send.send("I know from a trusted source you have done this contract :smile:", ephemeral=True)
-                        return
 
                 # Updates DB
                 self.db_connection.add_member_remaining(int(interac_guild.id), contract_id, author_id)
