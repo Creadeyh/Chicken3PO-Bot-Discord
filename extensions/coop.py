@@ -5,7 +5,7 @@ from interactions import CommandContext, ComponentContext
 from interactions.ext.wait_for import *
 
 import extensions.db_connection as db, extensions.checks as checks, extensions.utils as utils
-from extensions.enums import ParticipationEnum, CoopStatusEnum
+from extensions.enums import ParticipationEnum, CoopStatusEnum, CoopGradeEnum
 
 import uuid
 
@@ -32,15 +32,29 @@ class Coop(interactions.Extension):
                 required=True
             ),
             interactions.Option(
+                name="grade",
+                description="The grade of the coop (i.e. your grade as coop creator)",
+                type=interactions.OptionType.STRING,
+                required=True,
+                choices=[
+                    interactions.Choice(name=CoopGradeEnum.AAA.value, value=CoopGradeEnum.AAA.value),
+                    interactions.Choice(name=CoopGradeEnum.AA.value, value=CoopGradeEnum.AA.value),
+                    interactions.Choice(name=CoopGradeEnum.A.value, value=CoopGradeEnum.A.value),
+                    interactions.Choice(name=CoopGradeEnum.B.value, value=CoopGradeEnum.B.value),
+                    interactions.Choice(name=CoopGradeEnum.C.value, value=CoopGradeEnum.C.value)
+                ]
+            ),
+            interactions.Option(
                 name="locked",
                 description="Whether or not the coop is locked at creation. Prevents people from joining",
                 type=interactions.OptionType.BOOLEAN,
                 required=False
             )
         ])
-    async def add_coop(self, ctx: CommandContext, coop_code: str, locked: bool=False):
+    async def add_coop(self, ctx: CommandContext, coop_code: str, grade: str, locked: bool=False):
         await ctx.defer(ephemeral=True)
 
+        grade = CoopGradeEnum(grade)
         interac_guild = await ctx.get_guild()
 
         if not (contract_id := checks.check_contract_channel(self.db_connection, int(interac_guild.id), int(ctx.channel_id))):
@@ -81,6 +95,7 @@ class Coop(interactions.Extension):
                                                                     })
         to_pin = await coop_channel.send(":x: Do not share the coop code with anyone outside of this coop\n" +
                         ":x: Do not make the coop public unless told by a coop organizer\n\n" +
+                        f"Coop grade: **{grade.value}**\n" +
                         f"Coop code: `{coop_code}`"
                         )
         await to_pin.pin()
@@ -96,7 +111,8 @@ class Coop(interactions.Extension):
             coop_code,
             ctx_author.id,
             coop_channel.id,
-            locked
+            locked,
+            grade
         )
         self.db_connection.remove_member_remaining(int(interac_guild.id), contract_id, ctx_author.id)
 

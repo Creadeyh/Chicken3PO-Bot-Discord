@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.1.0
+
+**New features:**
+
+- Added a grade option when creating a coop, so your teammates know which grade is the coop in
+
+**Changes:**
+
+- Because of the new possibility to replay leggacy contracts for points in EggInc, you can now remove yourself from the Already done list at any point, even if you have completed it in an earlier instance
+
+**Backend changes:**
+
+- Updated discord-py-interactions from 4.3.1 to 4.4.0
+- Added requirements.txt for dependency listing
+
 ## v2.0.1
 
 **Changes:**

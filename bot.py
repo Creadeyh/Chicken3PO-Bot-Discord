@@ -7,7 +7,7 @@ import extensions.utils as utils
 
 import json
 import asyncio
-import os
+from datetime import datetime
 
 #region Inits
 
@@ -40,7 +40,7 @@ bot.load("extensions.coop", None, pycord_bot, db_connection)
 @pycord_bot.event
 async def on_ready():
     await pycord_bot.change_presence(activity=pycord.Game("Egg Inc with Wall-Egg | /help"))
-    print("Bot is ready")
+    print(f"{datetime.now().isoformat()} Bot is ready")
 
 async def reload_extensions():
     bot.reload("extensions.commands", None, pycord_bot, db_connection)
@@ -50,10 +50,6 @@ async def reload_extensions():
 # FYI: Event is always fired for every guild at bot startup
 @bot.event
 async def on_guild_create(guild: interactions.Guild):
-
-    # TODO remove after 2.0
-    if utils.read_config("BOT_VERSION") in ["1.3.7", "1.3.7.1"]:
-        return
     
     if int(guild.id) not in db_connection.get_all_guild_ids():
         # New guild registration
@@ -172,80 +168,13 @@ async def remove_from_server(ctx, id):
 async def update_data_version(ctx: pycord_commands.Context):
     with open("config.json", "r") as f:
         config = json.load(f)
-
-    # Pre 1.3.7
-    if "BOT_VERSION" not in config.keys():
-
-        # Added database connection
-        config["DB_HOSTNAME"] = "localhost"
-        config["DB_PORT"] = 27017
-        config["DB_NAME"] = "test_database"
-
-        # Added version for update checks
-        config["BOT_VERSION"] = "1.3.7"
-        
-        with open("config.json", "w") as f:
-            json.dump(config, f, indent=4)
-        await ctx.send("Successfully updated data to 1.3.7 :white_check_mark:")
-
-    elif config["BOT_VERSION"] == "1.3.7":
-        config.pop("DB_HOSTNAME")
-        config.pop("DB_PORT")
-        config["DB_STRING"] = "mongodb://localhost:27017"
-        config["BOT_VERSION"] = "1.3.7.1"
-
-        with open("config.json", "w") as f:
-            json.dump(config, f, indent=4)
-        await ctx.send("Successfully updated data to 1.3.7.1 :white_check_mark:")
     
-    elif config["BOT_VERSION"] == "1.3.7.1":
-        config["BOT_VERSION"] = "2.0.0"
-
-        # Removed embed support
-        for guild_id in config["guilds"].keys():
-            config["guilds"][guild_id].pop("USE_EMBEDS", None)
-
-        # Transfer guild config to DB
-        for guild_id, config_dic in config["guilds"].items():
-            insert = config_dic.copy()
-            insert["guild_id"] = int(guild_id)
-            db_connection.guild_config.insert_one(insert)
-        config.pop("guilds", None)
+    if config["BOT_VERSION"] == "2.0.0":
+        config["BOT_VERSION"] = "2.1.0"
 
         with open("config.json", "w") as f:
             json.dump(config, f, indent=4)
-
-        # Transfer data files from JSON to DB
-        with open("data/alt_index.json", "r") as f:
-            alt_index = json.load(f)
-        db_connection.alt_index.insert_one({
-            "guild_id": db_connection.get_all_guild_ids()[0],
-            "data": alt_index
-        })
-        os.remove("data/alt_index.json")
-        with open("data/running_coops.json", "r") as f:
-            running_coops = json.load(f)
-        for contract_id, data in running_coops.items():
-            insert = {
-                "guild_id": db_connection.get_all_guild_ids()[0],
-                "contract_id": contract_id
-            }
-            insert.update(data.copy())
-            db_connection.running_coops.insert_one(insert)
-        os.remove("data/running_coops.json")
-        with open("data/participation_archive.json", "r") as f:
-            participation_archive = json.load(f)
-        for contract_id, data in participation_archive.items():
-            insert = {
-                "guild_id": db_connection.get_all_guild_ids()[0],
-                "contract_id": contract_id
-            }
-            insert["data"] = data.copy()
-            db_connection.participation_archive.insert_one(insert)
-        os.remove("data/participation_archive.json")
-
-        await ctx.send("Successfully updated data to 2.0.0 :white_check_mark:")
-    
+        await ctx.send("Successfully updated data to 2.1.0 :white_check_mark:")
     else:
         await ctx.send("No data update is needed")
 

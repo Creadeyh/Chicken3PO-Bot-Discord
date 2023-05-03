@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 
-from extensions.enums import ParticipationEnum, CoopStatusEnum
+from extensions.enums import ParticipationEnum, CoopStatusEnum, CoopGradeEnum
 
 from typing import *
 
@@ -257,11 +257,13 @@ class DatabaseConnection():
         creator_id: int,
         channel_id: int,
         locked: bool,
+        grade: CoopGradeEnum,
         message_id: int = None
     ):
         new_dic = {
             "code": coop_code,
             "creator": creator_id,
+            "grade": grade.value,
             "channel_id": channel_id,
             "message_id": message_id,
             "locked": locked,
