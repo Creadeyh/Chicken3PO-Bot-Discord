@@ -21,6 +21,7 @@ running_coops collection, document structure (1 doc per contract):
 		{
 			"code" : [coop-code],
 			"creator" : [discord-id],
+			"grade" : "AAA"/"AA"/"A"/"B"/"C",
 			"channel_id": [channel-id],
 			"message_id": [message-id],
 			"locked": true/false,

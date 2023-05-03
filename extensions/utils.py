@@ -138,7 +138,7 @@ async def generate_coop_message_content_component(
 
     content = "> -------------------------\n"
     if not is_failed:
-        content = content + f"> **Coop {coop_nb} - {len(other_members_mentions)+1}/{contract_size}{' FULL' if (len(other_members_mentions)+1) == contract_size else ''}**\n> \n"
+        content = content + f"> **Coop {coop_nb} ({coop_dic['grade']}) - {len(other_members_mentions)+1}/{contract_size}{' FULL' if (len(other_members_mentions)+1) == contract_size else ''}**\n> \n"
         content = content + f"> **Members:**\n> - {creator_mention} (Creator)\n"
         for mention in other_members_mentions:
             content = content + f"> - {mention}\n"
