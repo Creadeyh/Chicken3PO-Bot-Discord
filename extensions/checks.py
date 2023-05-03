@@ -1,6 +1,5 @@
 import discord as pycord
-import interactions
-from interactions import CommandContext
+from interactions import CommandContext, User
 
 import extensions.db_connection as db
 
@@ -65,8 +64,8 @@ def check_context_menu_coop_message(db_connection: db.DatabaseConnection, guild_
 #region Permissions checks
 
 async def check_is_owner(ctx: CommandContext):
-    info = await ctx.client.get_current_bot_information()
-    return int(ctx.author.user.id) == int(info["owner"]["id"])
+    owner: User = ctx.client.me.owner
+    return int(ctx.author.user.id) == int(owner.id)
 
 def check_is_admin(ctx: CommandContext):
     # 8 is the administrator permission
