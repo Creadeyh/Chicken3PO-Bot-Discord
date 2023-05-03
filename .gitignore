@@ -1,6 +1,6 @@
 # Folders
 .vscode/
-.venv/
+venv/
 
 # Files
 extensions/__pycache__
