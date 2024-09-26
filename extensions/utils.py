@@ -14,11 +14,6 @@ def read_config(key: str) -> Union[str, int]:
         config = json.load(f)
     return config[key]
 
-def load_db_connection():
-    db_string = read_config("DB_STRING")
-    db_name = read_config("DB_NAME")
-    return db.DatabaseConnection(db_string, db_name)
-
 #region Member utils
 
 async def get_member_mention(member_id: int, guild: pycord.Guild, bot: pycord.Client, db_connection: db.DatabaseConnection) -> str:

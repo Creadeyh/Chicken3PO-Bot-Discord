@@ -10,7 +10,7 @@ from extensions.enums import CoopStatusEnum, ParticipationEnum
 from datetime import date
 import uuid
 
-GUILD_IDS = utils.load_db_connection().get_all_guild_ids()
+GUILD_IDS = db.DatabaseConnection().get_all_guild_ids()
 
 class Contract(interactions.Extension):
 

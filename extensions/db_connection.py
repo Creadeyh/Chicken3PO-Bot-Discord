@@ -1,20 +1,38 @@
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 
+from extensions import utils
 from extensions.enums import ParticipationEnum, CoopStatusEnum, CoopGradeEnum
 
 from typing import *
+import sys
+from datetime import datetime
 
-class DatabaseConnection():
+class Singleton(type):
+    _instances = {}
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
 
-    def __init__(self, connection_string, database_name):
+class DatabaseConnection(metaclass=Singleton):
+
+    def __init__(self):
+        connection_string = utils.read_config("DB_STRING")
+        database_name = utils.read_config("DB_NAME")
+
         self.client = MongoClient(connection_string)
         try:
             self.client.admin.command('ping')
         except ConnectionFailure:
-            print("Server not available")
+            print(f"{datetime.now().isoformat()} Database not available")
+            sys.exit()
+        except Exception as e:
+            print(f"{datetime.now().isoformat()} Database connection exception type: {e.__class__}")
+            print(e)
+            sys.exit()
         else:
-            print("Connected to MongoDB")
+            print(f"{datetime.now().isoformat()} Connected to MongoDB")
         self.db = self.client[database_name]
         self.guild_config = self.db.guild_config
         self.alt_index = self.db.alt_index

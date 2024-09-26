@@ -3,12 +3,11 @@ from discord.ext import commands as pycord_commands
 import interactions
 from interactions import CommandContext, ComponentContext
 
-import extensions.db_connection as db, extensions.checks as checks, extensions.utils as utils
-from extensions.enums import ParticipationEnum
+import extensions.db_connection as db, extensions.checks as checks
 
 import json
 
-GUILD_IDS = utils.load_db_connection().get_all_guild_ids()
+GUILD_IDS = db.DatabaseConnection().get_all_guild_ids()
 
 class Commands(interactions.Extension):
 

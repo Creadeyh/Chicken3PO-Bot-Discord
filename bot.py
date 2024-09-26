@@ -4,12 +4,15 @@ import interactions
 from interactions.ext import wait_for
 
 import extensions.utils as utils
+import extensions.db_connection as db
 
 import json
 import asyncio
 from datetime import datetime
 
 #region Inits
+
+print(f"{datetime.now().isoformat()} Starting up...")
 
 pycord_intents = pycord.Intents.default()
 pycord_intents.members = True
@@ -27,7 +30,7 @@ bot = interactions.Client(token=TOKEN, intents=intents)
 
 wait_for.setup(bot, add_method=True)
 
-db_connection = utils.load_db_connection()
+db_connection = db.DatabaseConnection()
 
 bot.load("extensions.commands", None, pycord_bot, db_connection)
 bot.load("extensions.contract", None, pycord_bot, db_connection)
@@ -187,7 +190,7 @@ async def on_command_error(ctx, error):
     if isinstance(error, pycord_commands.MissingRequiredArgument):
         await ctx.send("Something is missing from this command :thinking:")
     else:
-        print(error)
+        print(f"{datetime.now().isoformat()} {error}")
 
 #endregion
 
