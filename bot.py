@@ -10,6 +10,8 @@ import json
 import asyncio
 from datetime import datetime
 
+BOT_VERSION = "2.1.1"
+
 #region Inits
 
 print(f"{datetime.now().isoformat()} Starting up...")
@@ -171,15 +173,12 @@ async def remove_from_server(ctx, id):
 async def update_data_version(ctx: pycord_commands.Context):
     with open("config.json", "r") as f:
         config = json.load(f)
-    
-    if config["BOT_VERSION"] == "2.0.0":
-        config["BOT_VERSION"] = "2.1.0"
 
-        with open("config.json", "w") as f:
-            json.dump(config, f, indent=4)
-        await ctx.send("Successfully updated data to 2.1.0 :white_check_mark:")
-    else:
-        await ctx.send("No data update is needed")
+    config.pop("BOT_VERSION")
+
+    with open("config.json", "w") as f:
+        json.dump(config, f, indent=4)
+    await ctx.send("Successfully updated data to 2.1.1 :white_check_mark:")
 
 #endregion
 

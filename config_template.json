@@ -1,5 +1,4 @@
 {
-    "BOT_VERSION": "2.0.0",
     "TOKEN": "[bot_token]",
     "COMMAND_PREFIX": "!",
     "DB_STRING": "mongodb://localhost:27017",
