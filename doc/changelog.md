@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.1.1
+
+**Backend changes:**
+
+- Database connection object is now a singleton
+- Added log to all database connection exception to debug server issue
+- Automatically kill the bot process if it can't connect to the database (bot to be restarted by the server)
+- Removed BOT_VERSION from config.json
+- Deleted leftover data folder
+
 ## v2.1.0
 
 **New features:**

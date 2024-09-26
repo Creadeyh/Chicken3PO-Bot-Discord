@@ -9,7 +9,7 @@ from extensions.enums import ParticipationEnum, CoopStatusEnum, CoopGradeEnum
 
 import uuid
 
-GUILD_IDS = utils.load_db_connection().get_all_guild_ids()
+GUILD_IDS = db.DatabaseConnection().get_all_guild_ids()
 
 class Coop(interactions.Extension):
 

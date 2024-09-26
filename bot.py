@@ -4,12 +4,17 @@ import interactions
 from interactions.ext import wait_for
 
 import extensions.utils as utils
+import extensions.db_connection as db
 
 import json
 import asyncio
 from datetime import datetime
 
+BOT_VERSION = "2.1.1"
+
 #region Inits
+
+print(f"{datetime.now().isoformat()} Starting up...")
 
 pycord_intents = pycord.Intents.default()
 pycord_intents.members = True
@@ -27,7 +32,7 @@ bot = interactions.Client(token=TOKEN, intents=intents)
 
 wait_for.setup(bot, add_method=True)
 
-db_connection = utils.load_db_connection()
+db_connection = db.DatabaseConnection()
 
 bot.load("extensions.commands", None, pycord_bot, db_connection)
 bot.load("extensions.contract", None, pycord_bot, db_connection)
@@ -168,15 +173,12 @@ async def remove_from_server(ctx, id):
 async def update_data_version(ctx: pycord_commands.Context):
     with open("config.json", "r") as f:
         config = json.load(f)
-    
-    if config["BOT_VERSION"] == "2.0.0":
-        config["BOT_VERSION"] = "2.1.0"
 
-        with open("config.json", "w") as f:
-            json.dump(config, f, indent=4)
-        await ctx.send("Successfully updated data to 2.1.0 :white_check_mark:")
-    else:
-        await ctx.send("No data update is needed")
+    config.pop("BOT_VERSION")
+
+    with open("config.json", "w") as f:
+        json.dump(config, f, indent=4)
+    await ctx.send("Successfully updated data to 2.1.1 :white_check_mark:")
 
 #endregion
 
@@ -187,7 +189,7 @@ async def on_command_error(ctx, error):
     if isinstance(error, pycord_commands.MissingRequiredArgument):
         await ctx.send("Something is missing from this command :thinking:")
     else:
-        print(error)
+        print(f"{datetime.now().isoformat()} {error}")
 
 #endregion
 
