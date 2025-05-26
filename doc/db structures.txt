@@ -4,7 +4,8 @@ guild_config collection, document structure:
 	"guild_id": [guild_id],
 	"COOPS_BEFORE_AFK": 3,
 	"GUEST_ROLE_ID": ""/[role-id],
-	"KEEP_COOP_CHANNELS": false
+	"KEEP_COOP_CHANNELS": false,
+	"EVERYONE_JOINED_PING_COOP_ORGA": false
 }
 
 running_coops collection, document structure (1 doc per contract):

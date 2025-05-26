@@ -64,7 +64,8 @@ async def on_guild_create(guild: interactions.Guild):
             "guild_id": int(guild.id),
             "COOPS_BEFORE_AFK": 3,
             "GUEST_ROLE_ID": "",
-            "KEEP_COOP_CHANNELS": False
+            "KEEP_COOP_CHANNELS": False,
+            "EVERYONE_JOINED_PING_COOP_ORGA": False
         })
         await reload_extensions()
 
