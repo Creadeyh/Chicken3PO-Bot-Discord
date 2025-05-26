@@ -132,6 +132,10 @@ class Commands(interactions.Extension):
                     interactions.Choice(
                         name="Whether or not to keep coop channel after the coop has been marked completed or failed (true/false)",
                         value="KEEP_COOP_CHANNELS"
+                    ),
+                    interactions.Choice(
+                        name="Ping Coop Organizers when all remaining have joined a coop (true/false)",
+                        value="EVERYONE_JOINED_PING_COOP_ORGA"
                     )
                 ]
             ),
@@ -156,7 +160,7 @@ class Commands(interactions.Extension):
             except Exception:
                 await ctx.send(":warning: Invalid value", ephemeral=True)
                 return
-        elif setting in ["KEEP_COOP_CHANNELS"]:
+        elif setting in ["KEEP_COOP_CHANNELS", "EVERYONE_JOINED_PING_COOP_ORGA"]:
             if value.lower() == "true":
                 value = True
             elif value.lower() == "false":

@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.2.0
+
+**New features:**
+
+- New setting for /settings admin command: enable or disable ping to the Coop Organizer role when all remaining have joined a coop
+
 ## v2.1.1
 
 **Backend changes:**

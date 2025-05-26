@@ -201,11 +201,12 @@ async def update_coop_message(
 #region Misc utils
 
 async def send_notif_no_remaining(db_connection: db.DatabaseConnection, guild: pycord.Guild, contract_id: str):
-    orga_role = pycord.utils.get(guild.roles, name="Coop Organizer")
+    if db_connection.get_guild_config_value(guild.id, "EVERYONE_JOINED_PING_COOP_ORGA"):
+        orga_role = pycord.utils.get(guild.roles, name="Coop Organizer")
 
-    contract_dic = db_connection.get_running_contract(guild.id, contract_id)
-    contract_channel = guild.get_channel(contract_dic["channel_id"])
+        contract_dic = db_connection.get_running_contract(guild.id, contract_id)
+        contract_channel = guild.get_channel(contract_dic["channel_id"])
     
-    await contract_channel.send(f"{orga_role.mention} Everyone has joined a coop for this contract :tada:")
+        await contract_channel.send(f"{orga_role.mention} Everyone has joined a coop for this contract :tada:")
 
 #endregion
