@@ -10,7 +10,7 @@ import json
 import asyncio
 from datetime import datetime
 
-BOT_VERSION = "2.1.1"
+BOT_VERSION = "2.2.0"
 
 #region Inits
 
