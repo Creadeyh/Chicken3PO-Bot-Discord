@@ -171,11 +171,13 @@ class DatabaseConnection(metaclass=Singleton):
         remaining_ids: List[int],
         message_id: int = None,
         already_done_ids: List[int] = [],
-        afk_ids: List[int] = []
+        afk_ids: List[int] = [],
+        contract_name: str = ""
     ):
         new_dic = {
             "guild_id": guild_id,
             "contract_id": contract_id,
+            "contract_name": contract_name,
             "size": size,
             "date": date,
             "is_leggacy": is_leggacy,

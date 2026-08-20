@@ -13,6 +13,7 @@ running_coops collection, document structure (1 doc per contract):
 {
 	"guild_id": [guild_id],
 	"contract_id": [contract-id],
+	"contract_name": [contract_name],
 	"size" : [contract-size],
 	"date" : [date]
 	"is_leggacy" : True/False,
