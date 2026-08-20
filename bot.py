@@ -10,6 +10,9 @@ import json
 import asyncio
 from datetime import datetime
 
+import warnings
+warnings.filterwarnings('ignore')
+
 BOT_VERSION = "2.2.0"
 
 #region Inits
