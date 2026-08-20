@@ -69,8 +69,11 @@ class Contract(interactions.Extension):
             return
         
         # Creates a category and channel below commands channel for the contract, where coops will be listed
-        category = await ctx_guild.create_category(contract_id)
-        await category.move(after=ctx_channel.category)
+        category = await ctx_guild.create_category(display_name if display_name != "" else contract_id)
+        if ctx_channel.category is not None:
+            await category.move(after=ctx_channel.category)
+        else:
+            await category.edit(position=0)
 
         channel_overwrites = ctx_channel.overwrites.copy()
         if ctx_guild.default_role in channel_overwrites.keys():
@@ -169,8 +172,6 @@ class Contract(interactions.Extension):
         
         await self.execute_remove_contract(ctx_guild, contract_id, contract_dic["channel_id"])
 
-        await ctx.send("Removed the contract :white_check_mark:", ephemeral=True)
-
     @interactions.extension_command(
         name="codes",
         description="Sends the codes of currently running coops",
@@ -241,7 +242,7 @@ class Contract(interactions.Extension):
 
     @interactions.extension_listener(name="on_message_create")
     async def on_message_create(self, message: interactions.Message):
-        if not message.author.bot and int(message.channel_id) in self.db_connection.get_all_contract_channel_ids(int(message.guild_id)):
+        if not message.author.bot and message.guild_id is not None and int(message.channel_id) in self.db_connection.get_all_contract_channel_ids(int(message.guild_id)):
             await message.delete()
 
     @interactions.extension_listener(name="on_component")

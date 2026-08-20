@@ -48,9 +48,9 @@ async def on_ready():
     print(f"{datetime.now().isoformat()} Bot is ready")
 
 async def reload_extensions():
-    bot.reload("extensions.commands", None, pycord_bot, db_connection)
-    bot.reload("extensions.contract", None, pycord_bot, db_connection)
-    bot.reload("extensions.coop", None, pycord_bot, db_connection)
+    bot.reload("extensions.commands", None, True, pycord_bot, db_connection)
+    bot.reload("extensions.contract", None, True, pycord_bot, db_connection)
+    bot.reload("extensions.coop", None, True, pycord_bot, db_connection)
 
 # FYI: Event is always fired for every guild at bot startup
 @bot.event
@@ -67,7 +67,8 @@ async def on_guild_create(guild: interactions.Guild):
             "KEEP_COOP_CHANNELS": False,
             "EVERYONE_JOINED_PING_COOP_ORGA": False
         })
-        await reload_extensions()
+        # TODO: Fix sync of commands when joining new guild
+        # await reload_extensions()
 
         # Data documents
         db_connection.alt_index.insert_one({"guild_id": int(guild.id), "data": {}})
