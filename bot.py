@@ -6,11 +6,13 @@ from interactions.ext import wait_for
 import extensions.utils as utils
 import extensions.db_connection as db
 
-import json
 import asyncio
 from datetime import datetime
 
-BOT_VERSION = "2.2.0"
+import warnings
+warnings.filterwarnings('ignore')
+
+BOT_VERSION = "2.3.0"
 
 #region Inits
 
@@ -48,9 +50,9 @@ async def on_ready():
     print(f"{datetime.now().isoformat()} Bot is ready")
 
 async def reload_extensions():
-    bot.reload("extensions.commands", None, pycord_bot, db_connection)
-    bot.reload("extensions.contract", None, pycord_bot, db_connection)
-    bot.reload("extensions.coop", None, pycord_bot, db_connection)
+    bot.reload("extensions.commands", None, True, pycord_bot, db_connection)
+    bot.reload("extensions.contract", None, True, pycord_bot, db_connection)
+    bot.reload("extensions.coop", None, True, pycord_bot, db_connection)
 
 # FYI: Event is always fired for every guild at bot startup
 @bot.event
@@ -67,7 +69,8 @@ async def on_guild_create(guild: interactions.Guild):
             "KEEP_COOP_CHANNELS": False,
             "EVERYONE_JOINED_PING_COOP_ORGA": False
         })
-        await reload_extensions()
+        # TODO: Fix sync of commands when joining new guild
+        # await reload_extensions()
 
         # Data documents
         db_connection.alt_index.insert_one({"guild_id": int(guild.id), "data": {}})
@@ -168,18 +171,6 @@ async def remove_from_server(ctx, id):
         return
     else:
         await ctx.send(f"Left {guild.name} :wink:")
-
-@pycord_bot.command(name="update-data-version")
-@pycord_commands.is_owner()
-async def update_data_version(ctx: pycord_commands.Context):
-    with open("config.json", "r") as f:
-        config = json.load(f)
-
-    config.pop("BOT_VERSION")
-
-    with open("config.json", "w") as f:
-        json.dump(config, f, indent=4)
-    await ctx.send("Successfully updated data to 2.1.1 :white_check_mark:")
 
 #endregion
 

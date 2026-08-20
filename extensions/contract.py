@@ -9,6 +9,7 @@ from extensions.enums import CoopStatusEnum, ParticipationEnum
 
 from datetime import date
 import uuid
+import re
 
 GUILD_IDS = db.DatabaseConnection().get_all_guild_ids()
 
@@ -43,9 +44,15 @@ class Contract(interactions.Extension):
                 description="Whether the contract is leggacy or not",
                 type=interactions.OptionType.BOOLEAN,
                 required=True
-            )
+            ),
+            interactions.Option(
+                name="contract_name",
+                description="The name of the contract displayed in game",
+                type=interactions.OptionType.STRING,
+                required=False
+            ),
         ])
-    async def add_contract(self, ctx: CommandContext, contract_id: str, size: int, is_leggacy: bool=False):
+    async def add_contract(self, ctx: CommandContext, contract_id: str, size: int, is_leggacy: bool=False, contract_name: str=""):
         await ctx.defer(ephemeral=True)
 
         interac_guild = await ctx.get_guild()
@@ -67,10 +74,18 @@ class Contract(interactions.Extension):
         if size <= 1:
             await ctx.send(":warning: Invalid contract size", ephemeral=True)
             return
+
+        # Convert to correct Discord channel name
+        channel_name = contract_name.replace(" ", "-")
+        channel_name = re.sub(r"[^a-z|0-9|_|.|-]", "", channel_name) # Delete all forbidden characters 
+        channel_name = re.sub(r"^-+|-+$", "", channel_name) # Remove leading and trailing dashes
         
         # Creates a category and channel below commands channel for the contract, where coops will be listed
-        category = await ctx_guild.create_category(contract_id)
-        await category.move(after=ctx_channel.category)
+        category = await ctx_guild.create_category(channel_name if contract_name != "" else contract_id)
+        if ctx_channel.category is not None:
+            await category.move(after=ctx_channel.category)
+        else:
+            await category.edit(position=0)
 
         channel_overwrites = ctx_channel.overwrites.copy()
         if ctx_guild.default_role in channel_overwrites.keys():
@@ -85,7 +100,7 @@ class Contract(interactions.Extension):
             else:
                 channel_overwrites[role] = pycord.PermissionOverwrite(view_channel=True)
 
-        channel = await category.create_text_channel(contract_id, slowmode_delay=21600, overwrites=channel_overwrites)
+        channel = await category.create_text_channel(channel_name if contract_name != "" else contract_id, slowmode_delay=21600, overwrites=channel_overwrites)
         data = await self.bot._http.get_channel(channel.id)
         interac_channel = interactions.Channel(**data, _client=self.bot._http)
         
@@ -122,7 +137,8 @@ class Contract(interactions.Extension):
             remaining_ids,
             None,
             already_done_ids,
-            afk_ids
+            afk_ids,
+            contract_name
         )
 
         # Sends the contract message
@@ -168,8 +184,6 @@ class Contract(interactions.Extension):
                 return
         
         await self.execute_remove_contract(ctx_guild, contract_id, contract_dic["channel_id"])
-
-        await ctx.send("Removed the contract :white_check_mark:", ephemeral=True)
 
     @interactions.extension_command(
         name="codes",
@@ -241,7 +255,7 @@ class Contract(interactions.Extension):
 
     @interactions.extension_listener(name="on_message_create")
     async def on_message_create(self, message: interactions.Message):
-        if not message.author.bot and int(message.channel_id) in self.db_connection.get_all_contract_channel_ids(int(message.guild_id)):
+        if not message.author.bot and message.guild_id is not None and int(message.channel_id) in self.db_connection.get_all_contract_channel_ids(int(message.guild_id)):
             await message.delete()
 
     @interactions.extension_listener(name="on_component")

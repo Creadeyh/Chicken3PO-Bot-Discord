@@ -60,6 +60,7 @@ async def generate_contract_message_content_component(pycord_bot: pycord.Client,
 
     content = ("==============================\n"
                         + f"**{'LEGGACY ' if is_leggacy else ''}Contract available**\n"
+                        + (f"*Name:* {contract_dic['contract_name']}\n" if contract_dic.get("contract_name") else "")
                         + f"*Contract ID:* `{contract_id}`\n"
                         + f"*Coop size:* {contract_dic['size']}\n"
                         + "==============================\n\n"
