@@ -6,14 +6,13 @@ from interactions.ext import wait_for
 import extensions.utils as utils
 import extensions.db_connection as db
 
-import json
 import asyncio
 from datetime import datetime
 
 import warnings
 warnings.filterwarnings('ignore')
 
-BOT_VERSION = "2.2.0"
+BOT_VERSION = "2.3.0"
 
 #region Inits
 
@@ -172,18 +171,6 @@ async def remove_from_server(ctx, id):
         return
     else:
         await ctx.send(f"Left {guild.name} :wink:")
-
-@pycord_bot.command(name="update-data-version")
-@pycord_commands.is_owner()
-async def update_data_version(ctx: pycord_commands.Context):
-    with open("config.json", "r") as f:
-        config = json.load(f)
-
-    config.pop("BOT_VERSION")
-
-    with open("config.json", "w") as f:
-        json.dump(config, f, indent=4)
-    await ctx.send("Successfully updated data to 2.1.1 :white_check_mark:")
 
 #endregion
 

@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.3.0
+
+**New features:**
+
+- Added optional argument contract_name for /contract for easier use with in-game name. If filled, contract name replaces contract ID for contract channel and category names and appears in the contract's message
+
+**Bugfixes:**
+
+- Fixed an error when using /contract is used from a channel that has no category
+- Fixed an error message when using /contract-remove
+- Fixed an error message related to the reloading of the bot's extensions to resync commands
+- Fixed an error when sending messages in the bot's DMs
+
+**Backend changes:**
+
+- Ignored warnings
+
 ## v2.2.0
 
 **New features:**
